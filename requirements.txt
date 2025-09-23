@@ -1,0 +1,8 @@
+Django==5.2.6
+python-dotenv==1.1.1
+dj-database-url==3.0.1
+django-crispy-forms==2.4
+crispy-bootstrap5==2025.6
+Pillow==11.3.0
+channels==4.1.0
+daphne==4.1.2

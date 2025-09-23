@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+{% block title %}Agregar observación{% endblock %}
+{% block content %}
+<h1>Observación para requerimiento #{{ ticket.id }}</h1>
+<form method="post" class="col-12 col-md-8">
+  {% csrf_token %}
+  {{ form|crispy }}
+  <button class="btn btn-primary">Agregar observación</button>
+  <a class="btn btn-secondary" href="/tickets/">Cancelar</a>
+</form>
+{% endblock %}

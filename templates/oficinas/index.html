@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+{% block title %}Oficinas{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center">
+  <h1>Oficinas</h1>
+  {% if request.user.is_authenticated and request.user.is_jefe %}
+    <a class="btn btn-primary" href="/oficinas/crear/">Crear oficina</a>
+  {% endif %}
+  </div>
+
+<form method="get" class="row g-2 mt-3 mb-3">
+  <div class="col-12 col-md-4">
+    <input class="form-control" type="text" name="q" placeholder="Buscar" value="{{ filters.q }}">
+  </div>
+  <div class="col-12 col-md-4">
+    <select name="supervisor" class="form-select">
+      <option value="">Supervisor</option>
+      {% for s in supervisors %}
+        <option value="{{ s.id }}" {% if filters.supervisor == s.id %}selected{% endif %}>{{ s.username }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-12 col-md-4">
+    <button class="btn btn-outline-secondary">Filtrar</button>
+    <a class="btn btn-link" href="/oficinas/">Limpiar</a>
+  </div>
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+</form>
+<table class="table table-striped mt-3">
+  <thead>
+    <tr><th>Nombre</th><th>Supervisor</th><th>Acciones</th></tr>
+  </thead>
+  <tbody>
+    {% for o in offices %}
+      <tr>
+        <td>{{ o.name }}</td>
+        <td>{{ o.supervisor }}</td>
+        <td>
+          {% if request.user.is_authenticated and request.user.is_jefe %}
+            <a class="btn btn-sm btn-outline-primary" href="/oficinas/{{o.id}}/editar/">Editar</a>
+            <a class="btn btn-sm btn-outline-danger" href="/oficinas/{{o.id}}/eliminar/">Eliminar</a>
+          {% else %}
+            <span class="text-muted">—</span>
+          {% endif %}
+        </td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="3" class="text-muted">No hay oficinas.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% if offices.paginator.num_pages > 1 %}
+<nav aria-label="Paginación" class="mt-3">
+  <ul class="pagination">
+    {% if offices.has_previous %}
+      <li class="page-item"><a class="page-link" href="?page={{ offices.previous_page_number }}&q={{ filters.q }}&supervisor={{ filters.supervisor }}">Anterior</a></li>
+    {% else %}
+      <li class="page-item disabled"><span class="page-link">Anterior</span></li>
+    {% endif %}
+    <li class="page-item disabled"><span class="page-link">Página {{ offices.number }} de {{ offices.paginator.num_pages }}</span></li>
+    {% if offices.has_next %}
+      <li class="page-item"><a class="page-link" href="?page={{ offices.next_page_number }}&q={{ filters.q }}&supervisor={{ filters.supervisor }}">Siguiente</a></li>
+    {% else %}
+      <li class="page-item disabled"><span class="page-link">Siguiente</span></li>
+    {% endif %}
+  </ul>
+</nav>
+{% endif %}
+{% endblock %}

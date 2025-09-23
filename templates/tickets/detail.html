@@ -1,0 +1,145 @@
+{% extends 'base.html' %}
+{% block title %}Detalle del Requerimiento #{{ ticket.id }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1>Requerimiento #{{ ticket.id }}</h1>
+  <a class="btn btn-secondary" href="/tickets/">Volver a requerimientos</a>
+</div>
+
+<!-- Información básica del requerimiento -->
+<div class="card mb-4">
+  <div class="card-header">
+    <h5 class="mb-0">Información del Requerimiento</h5>
+  </div>
+  <div class="card-body">
+    <div class="row">
+      <div class="col-md-6">
+        <p><strong>Solicitante:</strong> {{ ticket.requester_name }}</p>
+        <p><strong>Oficina solicitante:</strong> 
+          {% if ticket.requester_office_text %}
+            {{ ticket.requester_office_text }}
+          {% else %}
+            {{ ticket.requester_office }}
+          {% endif %}
+        </p>
+        <p><strong>Descripción:</strong></p>
+        <p class="text-muted">{{ ticket.description }}</p>
+      </div>
+      <div class="col-md-6">
+        <p><strong>Oficina asignada:</strong> {{ ticket.assigned_office }}</p>
+        <p><strong>Supervisor:</strong> 
+          {% if ticket.supervisor %}
+            {{ ticket.supervisor.username }} ({{ ticket.supervisor.get_full_name|default:ticket.supervisor.username }})
+          {% else %}
+            <span class="text-muted">No asignado</span>
+          {% endif %}
+        </p>
+        <p><strong>Técnico asignado:</strong> 
+          {% if ticket.technician %}
+            <span class="text-primary">{{ ticket.technician.username }}</span>
+            {% if ticket.technician.get_full_name %}
+              <br><small class="text-muted">{{ ticket.technician.get_full_name }}</small>
+            {% endif %}
+            {% if ticket.technician.phone %}
+              <br><small class="text-muted">📞 {{ ticket.technician.phone }}</small>
+            {% endif %}
+          {% else %}
+            <span class="text-warning">⚠️ Pendiente asignación</span>
+          {% endif %}
+        </p>
+        <p><strong>Prioridad:</strong> 
+          <span class="badge 
+            {% if ticket.priority == 5 %}bg-danger
+            {% elif ticket.priority == 4 %}bg-warning
+            {% elif ticket.priority == 3 %}bg-info
+            {% else %}bg-secondary
+            {% endif %}">
+            {{ ticket.get_priority_display }}
+          </span>
+        </p>
+        <p><strong>Estado:</strong> 
+          <span class="badge 
+            {% if ticket.status == 'COMPLETED' %}bg-success
+            {% elif ticket.status == 'IN_PROGRESS' %}bg-primary
+            {% elif ticket.status == 'PENDING_SUPPLIES' %}bg-warning
+            {% else %}bg-secondary
+            {% endif %}">
+            {{ ticket.get_status_display }}
+          </span>
+        </p>
+        <p><strong>Código de equipo:</strong> {{ ticket.equipment_code|default:"No especificado" }}</p>
+        <p><strong>Creado:</strong> {{ ticket.created_at|date:"d/m/Y H:i" }}</p>
+        <p><strong>Actualizado:</strong> {{ ticket.updated_at|date:"d/m/Y H:i" }}</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Acciones disponibles -->
+<div class="mb-4">
+  {% if request.user.is_supervisor and request.user.office_id == ticket.assigned_office_id and ticket.status != 'COMPLETED' %}
+    <a class="btn btn-outline-primary" href="/tickets/{{ticket.id}}/asignar/">
+      {% if ticket.technician_id %}Reasignar{% else %}Asignar{% endif %} Técnico
+    </a>
+  {% endif %}
+  {% if request.user.is_tecnico and request.user.id == ticket.technician_id and ticket.status != 'COMPLETED' %}
+    <a class="btn btn-outline-success" href="/tickets/{{ticket.id}}/actualizar/">Actualizar Estado</a>
+  {% endif %}
+  {% if ticket.status != 'COMPLETED' %}
+    <!-- Solo técnicos asignados y supervisores pueden agregar notas y evidencias, NO los jefes -->
+    {% if request.user.is_tecnico and request.user.id == ticket.technician_id or request.user.id == ticket.supervisor_id or request.user.is_supervisor and request.user.office_id == ticket.assigned_office_id %}
+      <a class="btn btn-outline-secondary" href="/tickets/{{ticket.id}}/nota/">Agregar Nota</a>
+      <a class="btn btn-outline-secondary" href="/tickets/{{ticket.id}}/evidencia/">Subir Evidencia</a>
+    {% endif %}
+  {% endif %}
+</div>
+
+<!-- Notas -->
+<div class="card mb-4">
+  <div class="card-header">
+    <h5 class="mb-0">Notas y Observaciones</h5>
+  </div>
+  <div class="card-body">
+    {% if notes %}
+      {% for note in notes %}
+        <div class="border-start border-primary ps-3 mb-3">
+          <div class="d-flex justify-content-between align-items-start">
+            <strong>{{ note.author|default:"Usuario eliminado" }}</strong>
+            <small class="text-muted">{{ note.created_at|date:"d/m/Y H:i" }}</small>
+          </div>
+          <p class="mb-0 mt-1">{{ note.text|linebreaks }}</p>
+        </div>
+      {% endfor %}
+    {% else %}
+      <p class="text-muted mb-0">No hay notas registradas.</p>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Evidencias -->
+<div class="card mb-4">
+  <div class="card-header">
+    <h5 class="mb-0">Evidencias</h5>
+  </div>
+  <div class="card-body">
+    {% if evidences %}
+      <div class="row">
+        {% for evidence in evidences %}
+          <div class="col-md-4 col-lg-3 mb-3">
+            <div class="card">
+              <img src="{{ evidence.image.url }}" class="card-img-top" alt="Evidencia" style="height: 200px; object-fit: cover;">
+              <div class="card-body p-2">
+                <small class="text-muted">{{ evidence.uploaded_at|date:"d/m/Y H:i" }}</small>
+                <a href="{{ evidence.image.url }}" target="_blank" class="btn btn-sm btn-outline-primary d-block mt-1">Ver completa</a>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="text-muted mb-0">No hay evidencias subidas.</p>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}

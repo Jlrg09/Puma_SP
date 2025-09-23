@@ -1,0 +1,139 @@
+{% for t in tickets %}
+  <tr class="align-middle">
+    <td class="text-center">
+      <span class="badge bg-light text-dark fw-bold">#{{ t.id }}</span>
+    </td>
+    <td>
+      <div class="d-flex align-items-center">
+        <i class="bi bi-person-circle text-muted me-2"></i>
+        <div>
+          <div class="fw-medium">{{ t.requester_name }}</div>
+          <small class="text-muted">Solicitante</small>
+        </div>
+      </div>
+    </td>
+    <td>
+      <div class="d-flex align-items-center">
+        <i class="bi bi-building text-muted me-2"></i>
+        <span>{% if t.requester_office_text %}{{ t.requester_office_text }}{% else %}{{ t.requester_office|default:"Sin oficina" }}{% endif %}</span>
+      </div>
+    </td>
+    <td>
+      <div class="d-flex align-items-center">
+        <i class="bi bi-geo-alt text-muted me-2"></i>
+        <span>{{ t.assigned_office|default:"Sin asignar" }}</span>
+      </div>
+    </td>
+    <td class="text-center">
+      {% if t.get_priority_display == 'ALTA' %}
+        <span class="badge bg-danger">
+          <i class="bi bi-exclamation-triangle-fill me-1"></i>ALTA
+        </span>
+      {% elif t.get_priority_display == 'MEDIA' %}
+        <span class="badge bg-warning">
+          <i class="bi bi-dash-circle-fill me-1"></i>MEDIA
+        </span>
+      {% else %}
+        <span class="badge bg-secondary">
+          <i class="bi bi-circle-fill me-1"></i>BAJA
+        </span>
+      {% endif %}
+    </td>
+    <td class="text-center">
+      {% if t.get_status_display == 'Abierto' %}
+        <span class="badge bg-primary">
+          <i class="bi bi-circle me-1"></i>Abierto
+        </span>
+      {% elif t.get_status_display == 'En progreso' %}
+        <span class="badge bg-info">
+          <i class="bi bi-clock me-1"></i>En progreso
+        </span>
+      {% elif t.get_status_display == 'Pendiente por insumos' %}
+        <span class="badge bg-warning">
+          <i class="bi bi-pause-circle me-1"></i>Pendiente
+        </span>
+      {% elif t.get_status_display == 'Completado' %}
+        <span class="badge bg-success">
+          <i class="bi bi-check-circle me-1"></i>Completado
+        </span>
+      {% else %}
+        <span class="badge bg-danger">
+          <i class="bi bi-x-circle me-1"></i>Cancelado
+        </span>
+      {% endif %}
+    </td>
+    <td>
+      {% if t.technician %}
+        <div class="d-flex align-items-center">
+          <i class="bi bi-person-gear text-success me-2"></i>
+          <div>
+            <div class="fw-medium">{{ t.technician.username }}</div>
+            <small class="text-muted">{{ t.technician.get_full_name }}</small>
+          </div>
+        </div>
+      {% else %}
+        <div class="d-flex align-items-center text-muted">
+          <i class="bi bi-person-dash me-2"></i>
+          <span>Sin asignar</span>
+        </div>
+      {% endif %}
+    </td>
+    <td class="text-center">
+      <div class="btn-group" role="group">
+        <!-- Botón principal: Ver detalle -->
+        {% if request.user.is_jefe or request.user.is_supervisor and request.user.office_id == t.assigned_office_id or request.user.is_tecnico and request.user.id == t.technician_id or request.user.id == t.supervisor_id %}
+          <a class="btn btn-sm btn-outline-primary" href="/tickets/{{t.id}}/detalle/" title="Ver detalle">
+            <i class="bi bi-eye"></i>
+          </a>
+        {% endif %}
+
+        <!-- Asignar/Reasignar técnico -->
+        {% if request.user.is_supervisor and request.user.office_id == t.assigned_office_id and t.status != 'COMPLETED' %}
+          <a class="btn btn-sm btn-outline-secondary" href="/tickets/{{t.id}}/asignar/" title="{% if t.technician_id %}Reasignar{% else %}Asignar{% endif %} técnico">
+            <i class="bi bi-person-plus"></i>
+          </a>
+        {% endif %}
+
+        <!-- Actualizar estado -->
+        {% if request.user.is_tecnico and request.user.id == t.technician_id and t.status != 'COMPLETED' %}
+          <a class="btn btn-sm btn-outline-success" href="/tickets/{{t.id}}/actualizar/" title="Actualizar estado">
+            <i class="bi bi-arrow-repeat"></i>
+          </a>
+        {% endif %}
+
+        <!-- Dropdown para más acciones -->
+        {% if request.user.is_tecnico and request.user.id == t.technician_id or request.user.id == t.supervisor_id or request.user.is_supervisor and request.user.office_id == t.assigned_office_id %}
+          {% if t.status != 'COMPLETED' %}
+            <div class="btn-group" role="group">
+              <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" title="Más acciones">
+                <i class="bi bi-three-dots"></i>
+              </button>
+              <ul class="dropdown-menu">
+                <li>
+                  <a class="dropdown-item" href="/tickets/{{t.id}}/nota/">
+                    <i class="bi bi-chat-left-text me-2"></i>Agregar Nota
+                  </a>
+                </li>
+                <li>
+                  <a class="dropdown-item" href="/tickets/{{t.id}}/evidencia/">
+                    <i class="bi bi-camera me-2"></i>Agregar Evidencia
+                  </a>
+                </li>
+              </ul>
+            </div>
+          {% endif %}
+        {% endif %}
+      </div>
+    </td>
+  </tr>
+{% empty %}
+  <tr>
+    <td colspan="8" class="text-center py-5">
+      <div class="empty-state">
+        <i class="bi bi-inbox"></i>
+        <p class="mb-0">No hay requerimientos de servicio que mostrar.</p>
+        <small class="text-muted">Ajusta los filtros o crea un nuevo requerimiento.</small>
+      </div>
+    </td>
+  </tr>
+{% endfor %}

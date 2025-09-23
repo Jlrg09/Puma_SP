@@ -1,0 +1,1108 @@
+{% extends 'base.html' %}
+{% block title %}Mis Estadísticas - Gestor de Servicios{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  .stats-hero {
+    background: linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-blue-light) 100%);
+    border-radius: 16px;
+    color: white;
+    margin-bottom: 2rem;
+  }
+  
+  .stat-card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(30, 64, 175, 0.1);
+    transition: all 0.3s ease;
+    overflow: hidden;
+  }
+  
+  .stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 30px rgba(30, 64, 175, 0.15);
+  }
+  
+  .stat-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--primary-blue);
+    margin-bottom: 0.5rem;
+  }
+  
+  .stat-label {
+    font-size: 0.875rem;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 500;
+  }
+  
+  .stat-icon {
+    font-size: 3rem;
+    opacity: 0.2;
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+  }
+  
+  .chart-card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(30, 64, 175, 0.1);
+  }
+  
+  .progress-modern {
+    height: 12px;
+    border-radius: 8px;
+    background-color: #f1f5f9;
+    overflow: hidden;
+  }
+  
+  .progress-modern .progress-bar {
+    border-radius: 8px;
+    transition: width 1.5s ease-in-out;
+  }
+  
+  .role-badge {
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  
+  .metric-comparison {
+    position: relative;
+    padding: 1.5rem;
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    border-radius: 12px;
+    margin-bottom: 1rem;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="mb-4">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item">
+      <a href="/" class="text-decoration-none">
+        <i class="bi bi-house me-1"></i>Inicio
+      </a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page">Mis Estadísticas</li>
+  </ol>
+</nav>
+
+<!-- Header Hero -->
+<div class="stats-hero p-4 mb-4">
+  <div class="row align-items-center">
+    <div class="col-md-8">
+      <h1 class="display-6 fw-bold mb-2">Mis Estadísticas</h1>
+      <p class="mb-0 opacity-90">Panel personalizado de rendimiento y métricas</p>
+    </div>
+    <div class="col-md-4 text-end">
+      <div class="d-inline-flex align-items-center">
+        <span class="role-badge bg-white text-primary me-3">
+          {% if request.user.is_jefe %}
+            <i class="bi bi-star-fill me-1"></i>Jefe
+          {% elif request.user.is_supervisor %}
+            <i class="bi bi-shield-fill me-1"></i>Supervisor
+          {% elif request.user.is_tecnico %}
+            <i class="bi bi-tools me-1"></i>Técnico
+          {% endif %}
+        </span>
+        <div class="text-end">
+          <div class="fw-medium">{{ request.user.get_full_name|default:request.user.username }}</div>
+          <small class="opacity-75">{{ "now"|date:"d/m/Y H:i" }}</small>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="stats-root" 
+  data-role="{{ role }}"
+  {% if office_id %}data-office-id="{{ office_id }}"{% endif %}
+  {% if tech_id %}data-tech-id="{{ tech_id }}"{% endif %}
+  class="d-none"></div>
+
+{% if mensaje %}
+  <div class="alert alert-info border-0 shadow-sm rounded-3 mb-4">
+    <i class="bi bi-info-circle me-2"></i>{{ mensaje }}
+  </div>
+{% endif %}
+
+{% if request.user.is_jefe %}
+  <!-- Métricas principales del Jefe -->
+  <div class="row g-4 mb-4">
+    <div class="col-12 col-md-4">
+      <div class="stat-card">
+        <div class="card-body position-relative p-4">
+          <i class="bi bi-files stat-icon"></i>
+          <div class="stat-value">{{ total_tickets }}</div>
+          <div class="stat-label">Total de Requerimientos</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-md-4">
+      <div class="stat-card">
+        <div class="card-body position-relative p-4">
+          <i class="bi bi-check-circle-fill stat-icon text-success"></i>
+          <div class="stat-value text-success">
+            {% for s in by_status %}
+              {% if s.code == 'COMPLETED' %}{{ s.total }}{% endif %}
+            {% empty %}0{% endfor %}
+          </div>
+          <div class="stat-label">Completados</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-md-4">
+      <div class="stat-card">
+        <div class="card-body position-relative p-4">
+          <i class="bi bi-clock-fill stat-icon text-warning"></i>
+          <div class="stat-value text-warning">
+            {% for s in by_status %}
+              {% if s.code == 'IN_PROGRESS' %}{{ s.total }}{% endif %}
+            {% empty %}0{% endfor %}
+          </div>
+          <div class="stat-label">En Progreso</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <!-- Gráfico de estados -->
+    <div class="col-12 col-lg-6">
+      <div class="chart-card">
+        <div class="card-header bg-white border-bottom-0 pb-0">
+          <h5 class="mb-0">
+            <i class="bi bi-pie-chart me-2 text-primary"></i>
+            Distribución por Estado
+          </h5>
+        </div>
+        <div class="card-body">
+          {% if by_status %}
+            <div class="chart-container mb-4" style="height: 300px;">
+              <canvas id="jefeStatusChart"></canvas>
+            </div>
+            
+            <div class="status-breakdown">
+              {% for s in by_status %}
+                <div class="d-flex align-items-center justify-content-between py-2 border-bottom">
+                  <div class="d-flex align-items-center">
+                    {% if s.code == 'DRAFT' %}
+                      <div class="status-dot bg-secondary me-2"></div>
+                      <span class="fw-medium">Borrador</span>
+                    {% elif s.code == 'ASSIGNED' %}
+                      <div class="status-dot bg-primary me-2"></div>
+                      <span class="fw-medium">Asignado</span>
+                    {% elif s.code == 'IN_PROGRESS' %}
+                      <div class="status-dot bg-warning me-2"></div>
+                      <span class="fw-medium">En Progreso</span>
+                    {% elif s.code == 'PENDING_SUPPLIES' %}
+                      <div class="status-dot bg-info me-2"></div>
+                      <span class="fw-medium">Pendiente Insumos</span>
+                    {% elif s.code == 'COMPLETED' %}
+                      <div class="status-dot bg-success me-2"></div>
+                      <span class="fw-medium">Completado</span>
+                    {% endif %}
+                  </div>
+                  <span class="badge bg-light text-dark fw-bold">{{ s.total }}</span>
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="empty-state text-center py-5">
+              <i class="bi bi-inbox display-1 text-muted mb-3"></i>
+              <h6 class="text-muted">Sin datos de estados</h6>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    
+    <!-- Gráfico de oficinas -->
+    <div class="col-12 col-lg-6">
+      <div class="chart-card">
+        <div class="card-header bg-white border-bottom-0 pb-0">
+          <h5 class="mb-0">
+            <i class="bi bi-building me-2 text-primary"></i>
+            Distribución por Oficina
+          </h5>
+        </div>
+        <div class="card-body">
+          {% if by_office %}
+            <div class="chart-container mb-4" style="height: 300px;">
+              <canvas id="jefeOfficeChart"></canvas>
+            </div>
+            
+            <div class="office-breakdown">
+              {% for o in by_office %}
+                <div class="mb-3">
+                  <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="fw-medium">
+                      <i class="bi bi-geo-alt-fill text-primary me-2"></i>
+                      {{ o.assigned_office__name|default:"Sin oficina asignada" }}
+                    </span>
+                    <span class="badge bg-primary">{{ o.total }}</span>
+                  </div>
+                  <div class="progress-modern">
+                    <div class="progress-bar bg-primary" 
+                         role="progressbar" 
+                         style="width: 0%" 
+                         data-width="{{ o.total }}"
+                         aria-valuenow="{{ o.total }}" 
+                         aria-valuemin="0" 
+                         aria-valuemax="100">
+                    </div>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="empty-state text-center py-5">
+              <i class="bi bi-building display-1 text-muted mb-3"></i>
+              <h6 class="text-muted">Sin datos por oficina</h6>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+{% elif request.user.is_supervisor %}
+  <!-- Header de información de oficina -->
+  <div class="metric-comparison mb-4">
+    <div class="row align-items-center">
+      <div class="col-md-6">
+        <div class="d-flex align-items-center">
+          <i class="bi bi-building-fill text-primary me-3" style="font-size: 2rem;"></i>
+          <div>
+            <h5 class="mb-1 fw-bold">{{ oficina.name }}</h5>
+            <small class="text-muted">Oficina supervisada</small>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6 text-md-end">
+        <div class="d-flex justify-content-md-end gap-4">
+          <div class="text-center">
+            <div class="fw-bold fs-4 text-primary">{{ tecnicos_activos }}</div>
+            <small class="text-muted">Técnicos</small>
+          </div>
+          <div class="text-center">
+            <div class="fw-bold fs-4 text-success">{{ asignados_oficina }}</div>
+            <small class="text-muted">Total Req.</small>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Métricas del supervisor -->
+  <div class="row g-4 mb-4">
+    <div class="col-12 col-md-6 col-xl-3">
+      <div class="stat-card">
+        <div class="card-body position-relative p-4">
+          <i class="bi bi-building stat-icon"></i>
+          <div class="stat-value">{{ asignados_oficina }}</div>
+          <div class="stat-label">Requerimientos de Oficina</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-md-6 col-xl-3">
+      <div class="stat-card">
+        <div class="card-body position-relative p-4">
+          <i class="bi bi-people stat-icon"></i>
+          <div class="stat-value">{{ tecnicos_activos }}</div>
+          <div class="stat-label">Técnicos Activos</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-md-6 col-xl-3">
+      <div class="stat-card">
+        <div class="card-body position-relative p-4">
+          <i class="bi bi-eye-fill stat-icon"></i>
+          <div class="stat-value">{{ mis_supervisados }}</div>
+          <div class="stat-label">Bajo mi Supervisión</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-md-6 col-xl-3">
+      <div class="stat-card">
+        <div class="card-body position-relative p-4">
+          <i class="bi bi-trophy-fill stat-icon text-warning"></i>
+          <div class="stat-value text-warning">
+            {% if top_tecnico %}{{ top_tecnico_total }}{% else %}0{% endif %}
+          </div>
+          <div class="stat-label">Mejor Técnico</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <!-- Estados de tickets -->
+    <div class="col-12 col-lg-6">
+      <div class="chart-card">
+        <div class="card-header bg-white border-bottom-0 pb-0">
+          <h5 class="mb-0">
+            <i class="bi bi-graph-up me-2 text-primary"></i>
+            Requerimientos por Estado
+          </h5>
+        </div>
+        <div class="card-body">
+          {% if por_estado %}
+            <div class="chart-container mb-4" style="height: 250px;">
+              <canvas id="supervisorStatusChart"></canvas>
+            </div>
+            
+            <div class="status-list">
+              {% for s in por_estado %}
+                <div class="d-flex align-items-center justify-content-between py-2 border-bottom">
+                  <div class="d-flex align-items-center">
+                    {% if s.code == 'DRAFT' %}
+                      <div class="status-dot bg-secondary me-2"></div>
+                      <span class="fw-medium">Borrador</span>
+                    {% elif s.code == 'ASSIGNED' %}
+                      <div class="status-dot bg-primary me-2"></div>
+                      <span class="fw-medium">Asignado</span>
+                    {% elif s.code == 'IN_PROGRESS' %}
+                      <div class="status-dot bg-warning me-2"></div>
+                      <span class="fw-medium">En Progreso</span>
+                    {% elif s.code == 'PENDING_SUPPLIES' %}
+                      <div class="status-dot bg-info me-2"></div>
+                      <span class="fw-medium">Pendiente Insumos</span>
+                    {% elif s.code == 'COMPLETED' %}
+                      <div class="status-dot bg-success me-2"></div>
+                      <span class="fw-medium">Completado</span>
+                    {% endif %}
+                  </div>
+                  <span class="badge bg-light text-dark fw-bold">{{ s.total }}</span>
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="empty-state text-center py-4">
+              <i class="bi bi-inbox display-4 text-muted mb-2"></i>
+              <p class="text-muted mb-0">Sin datos de estados</p>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    
+    <!-- Mejor técnico -->
+    <div class="col-12 col-lg-6">
+      <div class="chart-card">
+        <div class="card-header bg-white border-bottom-0 pb-0">
+          <h5 class="mb-0">
+            <i class="bi bi-award me-2 text-primary"></i>
+            Técnico Destacado
+          </h5>
+        </div>
+        <div class="card-body">
+          {% if top_tecnico %}
+            <div class="text-center py-4">
+              <div class="position-relative d-inline-block mb-4">
+                <div class="bg-warning rounded-circle d-flex align-items-center justify-content-center" 
+                     style="width: 80px; height: 80px;">
+                  <i class="bi bi-trophy-fill text-white" style="font-size: 2rem;"></i>
+                </div>
+                <div class="position-absolute bottom-0 end-0">
+                  <span class="badge bg-primary rounded-pill">{{ top_tecnico_total }}</span>
+                </div>
+              </div>
+              <h5 class="fw-bold mb-2">{{ top_tecnico.get_full_name|default:top_tecnico.username }}</h5>
+              <p class="text-muted mb-3">{{ top_tecnico.email }}</p>
+              <div class="row g-3">
+                <div class="col-6">
+                  <div class="bg-light rounded-3 p-3">
+                    <div class="fw-bold text-success fs-4">{{ top_tecnico_total }}</div>
+                    <small class="text-muted">Completados</small>
+                  </div>
+                </div>
+                <div class="col-6">
+                  <div class="bg-light rounded-3 p-3">
+                    <div class="fw-bold text-primary fs-4">100%</div>
+                    <small class="text-muted">Efectividad</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+          {% else %}
+            <div class="empty-state text-center py-4">
+              <i class="bi bi-people display-4 text-muted mb-3"></i>
+              <h6 class="text-muted">Aún no hay técnicos destacados</h6>
+              <p class="text-muted mb-0">Los datos aparecerán cuando los técnicos completen requerimientos</p>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+{% elif request.user.is_tecnico %}
+  <!-- Métricas del técnico -->
+  <div class="row g-4 mb-4">
+    <div class="col-12 col-md-6 col-xl-3">
+      <div class="stat-card">
+        <div class="card-body position-relative p-4">
+          <i class="bi bi-person-check-fill stat-icon"></i>
+          <div class="stat-value">{{ asignados }}</div>
+          <div class="stat-label">Asignados a Mí</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-md-6 col-xl-3">
+      <div class="stat-card">
+        <div class="card-body position-relative p-4">
+          <i class="bi bi-check-circle-fill stat-icon text-success"></i>
+          <div class="stat-value text-success">{{ completados }}</div>
+          <div class="stat-label">Completados</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-md-6 col-xl-3">
+      <div class="stat-card">
+        <div class="card-body position-relative p-4">
+          <i class="bi bi-pause-circle-fill stat-icon text-info"></i>
+          <div class="stat-value text-info">{{ pendientes_insumos }}</div>
+          <div class="stat-label">Pendiente Insumos</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-md-6 col-xl-3">
+      <div class="stat-card">
+        <div class="card-body position-relative p-4">
+          <i class="bi bi-graph-up stat-icon text-primary"></i>
+          <div class="stat-value">
+            {% if asignados > 0 %}
+              {% widthratio completados asignados 100 %}%
+            {% else %}
+              0%
+            {% endif %}
+          </div>
+          <div class="stat-label">Tasa Completado</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Gráfico de estados del técnico -->
+  <div class="row g-4">
+    <div class="col-12 col-lg-8">
+      <div class="chart-card">
+        <div class="card-header bg-white border-bottom-0 pb-0">
+          <div class="d-flex align-items-center justify-content-between">
+            <h5 class="mb-0">
+              <i class="bi bi-bar-chart me-2 text-primary"></i>
+              Mis Requerimientos por Estado
+            </h5>
+            <div class="d-flex gap-2">
+              <span class="badge bg-light text-dark">Total: {{ asignados }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="card-body">
+          {% if por_estado %}
+            <div class="chart-container mb-4" style="height: 300px;">
+              <canvas id="tecnicoStatusChart"></canvas>
+            </div>
+            
+            <div class="status-breakdown">
+              {% for s in por_estado %}
+                <div class="mb-3">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="d-flex align-items-center">
+                      {% if s.code == 'DRAFT' %}
+                        <div class="status-dot bg-secondary me-2"></div>
+                        <span class="fw-medium">Borrador</span>
+                      {% elif s.code == 'ASSIGNED' %}
+                        <div class="status-dot bg-primary me-2"></div>
+                        <span class="fw-medium">Asignado</span>
+                      {% elif s.code == 'IN_PROGRESS' %}
+                        <div class="status-dot bg-warning me-2"></div>
+                        <span class="fw-medium">En Progreso</span>
+                      {% elif s.code == 'PENDING_SUPPLIES' %}
+                        <div class="status-dot bg-info me-2"></div>
+                        <span class="fw-medium">Pendiente Insumos</span>
+                      {% elif s.code == 'COMPLETED' %}
+                        <div class="status-dot bg-success me-2"></div>
+                        <span class="fw-medium">Completado</span>
+                      {% endif %}
+                    </div>
+                    <span class="badge bg-light text-dark fw-bold">{{ s.total }}</span>
+                  </div>
+                  <div class="progress-modern">
+                    <div class="progress-bar
+                      {% if s.code == 'DRAFT' %}bg-secondary
+                      {% elif s.code == 'ASSIGNED' %}bg-primary
+                      {% elif s.code == 'IN_PROGRESS' %}bg-warning
+                      {% elif s.code == 'PENDING_SUPPLIES' %}bg-info
+                      {% elif s.code == 'COMPLETED' %}bg-success
+                      {% endif %}" 
+                         role="progressbar" 
+                         style="width: 0%" 
+                         data-width="{% if asignados > 0 %}{% widthratio s.total asignados 100 %}{% else %}0{% endif %}"
+                         aria-valuenow="{{ s.total }}" 
+                         aria-valuemin="0" 
+                         aria-valuemax="{{ asignados }}">
+                    </div>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="empty-state text-center py-5">
+              <i class="bi bi-inbox display-1 text-muted mb-3"></i>
+              <h6 class="text-muted">Sin requerimientos asignados</h6>
+              <p class="text-muted mb-0">Los datos aparecerán cuando se te asignen requerimientos</p>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    
+    <!-- Panel de rendimiento personal -->
+    <div class="col-12 col-lg-4">
+      <div class="chart-card">
+        <div class="card-header bg-white border-bottom-0 pb-0">
+          <h5 class="mb-0">
+            <i class="bi bi-speedometer2 me-2 text-primary"></i>
+            Mi Rendimiento
+          </h5>
+        </div>
+        <div class="card-body">
+          <!-- Indicador circular de completados -->
+          <div class="text-center mb-4">
+            <div class="position-relative d-inline-block">
+              <canvas id="tecnicoPerformanceChart" width="120" height="120"></canvas>
+              <div class="position-absolute top-50 start-50 translate-middle text-center">
+                <div class="fw-bold text-success fs-4">
+                  {% if asignados > 0 %}
+                    {% widthratio completados asignados 100 %}%
+                  {% else %}
+                    0%
+                  {% endif %}
+                </div>
+                <small class="text-muted">Completado</small>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Métricas adicionales -->
+          <div class="row g-3">
+            <div class="col-6">
+              <div class="text-center bg-light rounded-3 p-3">
+                <div class="fw-bold text-primary">{{ asignados }}</div>
+                <small class="text-muted">Total</small>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="text-center bg-light rounded-3 p-3">
+                <div class="fw-bold text-success">{{ completados }}</div>
+                <small class="text-muted">Hechos</small>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="text-center bg-light rounded-3 p-3">
+                <div class="fw-bold text-warning">
+                  {% for s in por_estado %}
+                    {% if s.code == 'IN_PROGRESS' %}{{ s.total }}{% endif %}
+                  {% empty %}0{% endfor %}
+                </div>
+                <small class="text-muted">Activos</small>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="text-center bg-light rounded-3 p-3">
+                <div class="fw-bold text-info">{{ pendientes_insumos }}</div>
+                <small class="text-muted">Pausa</small>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Acciones rápidas -->
+          <div class="mt-4 pt-3 border-top">
+            <a href="/tickets/" class="btn btn-primary btn-sm w-100 mb-2">
+              <i class="bi bi-list-task me-2"></i>Ver Mis Requerimientos
+            </a>
+            <a href="/tickets/create/" class="btn btn-outline-primary btn-sm w-100">
+              <i class="bi bi-plus-circle me-2"></i>Solicitar Nuevo
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% else %}
+  <!-- Contenido por defecto para usuarios sin rol específico -->
+  <div class="text-center py-5">
+    <div class="alert alert-warning">
+      <i class="bi bi-exclamation-triangle-fill me-2"></i>
+      No se encontró información específica para tu rol.
+    </div>
+  </div>
+{% endif %}
+<!-- Scripts de Chart.js y animaciones -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Fin de helpers y configuración inicial
+});
+</script>
+
+<!-- Variables JSON para los gráficos (seguro) -->
+{{ stats_payload|json_script:"stats-data" }}
+
+<!-- Scripts de Chart.js y animaciones -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Obtener datos del JSON
+  const statsData = JSON.parse(document.getElementById('stats-data').textContent);
+  
+  // Colores del tema (única definición)
+  const colors = {
+    primary: '#1e40af',
+    primaryLight: '#3b82f6',
+    accent: '#0ea5e9',
+    success: '#10b981',
+    warning: '#f59e0b',
+    danger: '#ef4444',
+    info: '#06b6d4'
+  };
+
+  // Configuración base para gráficos
+  const chartDefaults = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'bottom',
+        labels: {
+          padding: 15,
+          usePointStyle: true,
+          pointStyle: 'circle'
+        }
+      }
+    }
+  };
+
+  // Función para obtener colores por estado
+  function getStatusColor(status) {
+    switch(status) {
+      case 'DRAFT': return '#6c757d';
+      case 'ASSIGNED': return colors.primary;
+      case 'IN_PROGRESS': return colors.warning;
+      case 'PENDING_SUPPLIES': return colors.info;
+      case 'COMPLETED': return colors.success;
+      default: return colors.primary;
+    }
+  }
+
+  // Gráficos para JEFE
+  if (statsData.userRole === 'JEFE' && statsData.byStatus) {
+    // Gráfico de estados para jefe
+    if (document.getElementById('jefeStatusChart') && statsData.byStatus.length > 0) {
+      const ctx = document.getElementById('jefeStatusChart').getContext('2d');
+      new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: statsData.byStatus.map(item => item.status),
+          datasets: [{
+            data: statsData.byStatus.map(item => item.value),
+            backgroundColor: statsData.byStatus.map(item => getStatusColor(item.code)),
+            borderWidth: 0,
+            hoverOffset: 8
+          }]
+        },
+        options: {
+          ...chartDefaults,
+          cutout: '65%'
+        }
+      });
+    }
+
+    // Gráfico de oficinas para jefe
+    if (document.getElementById('jefeOfficeChart') && statsData.byOffice && statsData.byOffice.length > 0) {
+      const ctx = document.getElementById('jefeOfficeChart').getContext('2d');
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: statsData.byOffice.map(item => item.label),
+          datasets: [{
+            label: 'Requerimientos',
+            data: statsData.byOffice.map(item => item.value),
+            backgroundColor: colors.primaryLight,
+            borderRadius: 8,
+            borderSkipped: false,
+          }]
+        },
+        options: {
+          ...chartDefaults,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { beginAtZero: true, grid: { display: false } },
+            x: { grid: { display: false } }
+          }
+        }
+      });
+    }
+  }
+
+  // Gráficos para SUPERVISOR
+  if (statsData.userRole === 'SUPERVISOR' && statsData.porEstado) {
+    // Gráfico de estados para supervisor
+    if (document.getElementById('supervisorStatusChart') && statsData.porEstado.length > 0) {
+      const ctx = document.getElementById('supervisorStatusChart').getContext('2d');
+      new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: statsData.porEstado.map(item => item.status),
+          datasets: [{
+            data: statsData.porEstado.map(item => item.value),
+            backgroundColor: statsData.porEstado.map(item => getStatusColor(item.code)),
+            borderWidth: 0,
+            hoverOffset: 8
+          }]
+        },
+        options: {
+          ...chartDefaults,
+          cutout: '60%'
+        }
+      });
+    }
+  }
+
+  // Gráficos para TÉCNICO
+  if (statsData.userRole === 'TECNICO' && statsData.porEstado) {
+    // Gráfico de estados para técnico
+    if (document.getElementById('tecnicoStatusChart') && statsData.porEstado.length > 0) {
+      const ctx = document.getElementById('tecnicoStatusChart').getContext('2d');
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: statsData.porEstado.map(item => item.status),
+          datasets: [{
+            label: 'Mis Requerimientos',
+            data: statsData.porEstado.map(item => item.value),
+            backgroundColor: statsData.porEstado.map(item => getStatusColor(item.code)),
+            borderRadius: 8,
+            borderSkipped: false,
+          }]
+        },
+        options: {
+          ...chartDefaults,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { beginAtZero: true, grid: { display: false } },
+            x: { grid: { display: false } }
+          }
+        }
+      });
+    }
+
+    // Gráfico circular de rendimiento del técnico
+    if (document.getElementById('tecnicoPerformanceChart') && statsData.totalAsignados !== undefined) {
+      const ctx = document.getElementById('tecnicoPerformanceChart').getContext('2d');
+      const completionRate = statsData.totalAsignados > 0 ? 
+        Math.round((statsData.completados / statsData.totalAsignados) * 100) : 0;
+      
+      new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          datasets: [{
+            data: [completionRate, 100 - completionRate],
+            backgroundColor: [colors.success, '#e5e7eb'],
+            borderWidth: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '75%',
+          plugins: {
+            legend: { display: false },
+            tooltip: { enabled: false }
+          }
+        }
+      });
+    }
+  }
+
+  // Animaciones
+  function animateCounters() {
+    const counters = document.querySelectorAll('.stat-value');
+    counters.forEach(counter => {
+      const target = parseInt(counter.textContent.replace('%', ''));
+      if (isNaN(target)) return;
+      
+      let current = 0;
+      const increment = target / 50;
+      const isPercentage = counter.textContent.includes('%');
+      
+      const timer = setInterval(() => {
+        current += increment;
+        if (current >= target) {
+          counter.textContent = target + (isPercentage ? '%' : '');
+          clearInterval(timer);
+        } else {
+          counter.textContent = Math.floor(current) + (isPercentage ? '%' : '');
+        }
+      }, 30);
+    });
+  }
+
+  function animateProgressBars() {
+    const progressBars = document.querySelectorAll('.progress-bar');
+    progressBars.forEach((bar, index) => {
+      const width = bar.getAttribute('data-width') || bar.getAttribute('aria-valuenow');
+      if (width) {
+        setTimeout(() => {
+          bar.style.width = width + '%';
+        }, index * 150);
+      }
+    });
+  }
+
+  // Hover effects para cards
+  function addCardEffects() {
+    const cards = document.querySelectorAll('.stat-card, .chart-card');
+    cards.forEach(card => {
+      card.addEventListener('mouseenter', function() {
+        this.style.transform = 'translateY(-4px)';
+        this.style.boxShadow = '0 8px 30px rgba(30, 64, 175, 0.15)';
+      });
+      
+      card.addEventListener('mouseleave', function() {
+        this.style.transform = 'translateY(0)';
+        this.style.boxShadow = '0 4px 20px rgba(30, 64, 175, 0.1)';
+      });
+    });
+  }
+
+  // Ejecutar animaciones
+  setTimeout(() => {
+    animateCounters();
+    animateProgressBars();
+    addCardEffects();
+  }, 500);
+});
+</script>
+
+<style>
+  .status-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  
+  .chart-container canvas {
+    max-height: 300px;
+  }
+  
+  .empty-state i {
+    opacity: 0.3;
+  }
+  
+  .progress-modern .progress-bar {
+    transition: width 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .stat-card, .chart-card {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .role-badge {
+    backdrop-filter: blur(10px);
+  }
+  
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .stat-card, .chart-card {
+    animation: fadeInUp 0.6s ease-out forwards;
+  }
+  
+  .stat-card:nth-child(2) { animation-delay: 0.1s; }
+  .stat-card:nth-child(3) { animation-delay: 0.2s; }
+  .stat-card:nth-child(4) { animation-delay: 0.3s; }
+</style>
+
+<script>
+(function() {
+  // Datos del usuario embebidos en el DOM
+  var root = document.getElementById('stats-root');
+  var role = root?.dataset?.role || 'NONE';
+  var officeId = root?.dataset?.officeId ? parseInt(root.dataset.officeId) : null;
+  var techId = root?.dataset?.techId ? parseInt(root.dataset.techId) : null;
+    function updateText(id, value){
+      var el = document.getElementById(id);
+      if (el) el.textContent = value;
+    }
+    function renderList(containerId, rows, labelKey, valueKey){
+      var list = document.getElementById(containerId);
+      if (!list) return;
+      var html = '';
+      if (rows && rows.length){
+        html = rows.map(function(r){
+          var label = r[labelKey];
+          var value = r[valueKey];
+          return '<li class="list-group-item d-flex justify-content-between align-items-center">'
+            + '<span>' + label + '</span>'
+            + '<span class="badge bg-secondary rounded-pill">' + value + '</span>'
+            + '</li>';
+        }).join('');
+      } else {
+        html = '<li class="list-group-item text-muted">Sin datos</li>';
+      }
+      list.innerHTML = html;
+    }
+    function renderSupervisor(data){
+      // KPIs simples
+      updateText('kpi-asignados-oficina', data.asignados_oficina);
+      updateText('kpi-tecnicos-activos', data.tecnicos_activos);
+      updateText('kpi-mis-supervisados', data.mis_supervisados);
+      // Lista por estado
+      renderList('list-por-estado', data.por_estado || [], 'status', 'total');
+      // Top técnico
+      var hasTop = !!(data.top_tecnico && data.top_tecnico.name);
+      var cont = document.getElementById('top-tech-container');
+      var empty = document.getElementById('top-tech-empty');
+      if (cont && empty){
+        if (hasTop){
+          cont.style.display = '';
+          empty.style.display = 'none';
+          updateText('top-tech-name', data.top_tecnico.name);
+          updateText('top-tech-email', data.top_tecnico.email || '');
+          updateText('top-tech-total', data.top_tecnico.total);
+        } else {
+          cont.style.display = 'none';
+          empty.style.display = '';
+        }
+      }
+    }
+    function renderJefe(data){
+      updateText('kpi-total-tickets', data.total_tickets);
+      // by_status: [{status,total}]
+  renderList('list-jefe-por-estado', data.by_status || [], 'status', 'total');
+      // by_office: [{office,total}]
+  renderList('list-jefe-por-oficina', data.by_office || [], 'office', 'total');
+    }
+    function renderTecnico(data){
+      updateText('kpi-tec-asignados', data.asignados);
+      updateText('kpi-tec-completados', data.completados);
+      updateText('kpi-tec-pend-insumos', data.pendientes_insumos);
+      renderList('list-tec-por-estado', data.por_estado || [], 'status', 'total');
+    }
+    function recalcSupervisor(payload){
+      if (officeId && payload.assigned_office_id === officeId){
+        fetch('/estadisticas/data/')
+          .then(function(r){ return r.json(); })
+          .then(function(data){ renderSupervisor(data); })
+          .catch(function(){});
+      }
+    }
+    function recalcJefe(){
+      fetch('/estadisticas/data/')
+        .then(function(r){ return r.json(); })
+        .then(function(data){ renderJefe(data); })
+        .catch(function(){});
+    }
+    function recalcTecnico(payload){
+      if (techId && String(payload.technician_id) === String(techId)){
+        fetch('/estadisticas/data/')
+          .then(function(r){ return r.json(); })
+          .then(function(data){ renderTecnico(data); })
+          .catch(function(){});
+      }
+    }
+    // Fallback de seguridad: pequeño polling cada 20s sólo para Supervisor
+    if (role === 'SUPERVISOR'){
+      setInterval(function(){
+        fetch('/estadisticas/data/')
+          .then(function(r){ return r.json(); })
+          .then(function(data){ renderSupervisor(data); })
+          .catch(function(){});
+      }, 20000);
+    } else if (role === 'JEFE'){
+      setInterval(function(){
+        fetch('/estadisticas/data/')
+          .then(function(r){ return r.json(); })
+          .then(function(data){ renderJefe(data); })
+          .catch(function(){});
+      }, 25000);
+    } else if (role === 'TECNICO'){
+      setInterval(function(){
+        fetch('/estadisticas/data/')
+          .then(function(r){ return r.json(); })
+          .then(function(data){ renderTecnico(data); })
+          .catch(function(){});
+      }, 30000);
+    }
+    
+  // WebSocket simplificado para estadísticas
+  (function() {
+    var ws = null;
+    var reconnectAttempts = 0;
+    
+    function createWebSocket() {
+      try {
+        var protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        var host = window.location.host;
+        var wsUrl = protocol + '//' + host + '/ws/stats/';
+        
+        ws = new WebSocket(wsUrl);
+        
+        ws.onopen = function() {
+          console.log('Stats WebSocket connected');
+          reconnectAttempts = 0;
+        };
+        
+        ws.onmessage = function(event) {
+          try {
+            var data = JSON.parse(event.data);
+            if (data.type === 'stats_update' || data.type === 'ticket_update') {
+              // Actualizar estadísticas según el rol
+              if (role === 'JEFE') {
+                recalcJefe();
+              } else if (role === 'SUPERVISOR') {
+                recalcSupervisor(data);
+              } else if (role === 'TECNICO') {
+                recalcTecnico(data);
+              }
+            }
+          } catch (e) {
+            console.error('Error parsing stats WebSocket message:', e);
+          }
+        };
+        
+        ws.onclose = function() {
+          if (reconnectAttempts < 5) {
+            reconnectAttempts++;
+            setTimeout(createWebSocket, 3000);
+          }
+        };
+        
+      } catch (e) {
+        console.error('Error creating stats WebSocket:', e);
+      }
+    }
+    
+    createWebSocket();
+  })();
+})();
+</script>
+{% endblock %}

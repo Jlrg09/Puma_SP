@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+{% block title %}Actualizar estado{% endblock %}
+{% block content %}
+<h1>Actualizar estado del requerimiento #{{ ticket.id }}</h1>
+<form method="post" class="col-12 col-md-6">
+  {% csrf_token %}
+  {{ form|crispy }}
+  <button class="btn btn-success">Guardar cambios</button>
+  <a class="btn btn-secondary" href="/tickets/">Cancelar</a>
+</form>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+    const statusField = document.querySelector('select[name="status"]');
+    const noteField = document.querySelector('textarea[name="note"]');
+    function toggleNoteRequired() {
+      if (!statusField || !noteField) return;
+      const requireNote = statusField.value === 'PENDING_SUPPLIES';
+      noteField.required = requireNote;
+    }
+    toggleNoteRequired();
+    statusField && statusField.addEventListener('change', toggleNoteRequired);
+    form && form.addEventListener('submit', function(e) {
+      if (statusField && statusField.value === 'PENDING_SUPPLIES') {
+        if (!noteField || noteField.value.trim() === '') {
+          e.preventDefault();
+          alert('Debes especificar los insumos necesarios en la nota.');
+          if (noteField) noteField.focus();
+        }
+      }
+    });
+  });
+  </script>
+{% endblock %}

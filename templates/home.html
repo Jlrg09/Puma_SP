@@ -1,0 +1,226 @@
+{% extends 'base.html' %}
+{% block title %}Inicio - Gestor de Servicios{% endblock %}
+{% block content %}
+
+<!-- Hero Section -->
+<div class="row align-items-center mb-5">
+  <div class="col-lg-6">
+    <h1 class="display-4 fw-bold text-primary mb-4">
+      Gestor de Servicios Técnicos
+    </h1>
+    <p class="lead text-muted mb-4">
+      Sistema integral para la gestión eficiente de requerimientos de servicio técnico. 
+      Organiza, asigna y da seguimiento a todos los servicios de tu organización.
+    </p>
+    {% if request.user.is_authenticated %}
+      <div class="d-flex gap-3 flex-wrap">
+        <a href="/tickets/" class="btn btn-primary btn-lg">
+          <i class="bi bi-list-task me-2"></i>Ver Requerimientos
+        </a>
+        {% if request.user.is_jefe %}
+          <a href="/tickets/crear/" class="btn btn-secondary btn-lg">
+            <i class="bi bi-plus-circle me-2"></i>Nuevo Requerimiento
+          </a>
+        {% endif %}
+        <a href="/estadisticas/" class="btn btn-outline-primary btn-lg">
+          <i class="bi bi-graph-up me-2"></i>Estadísticas
+        </a>
+      </div>
+    {% else %}
+      <div class="d-flex gap-3 flex-wrap">
+        <a href="/accounts/login/" class="btn btn-primary btn-lg">
+          <i class="bi bi-box-arrow-in-right me-2"></i>Iniciar Sesión
+        </a>
+        <a href="/accounts/register/" class="btn btn-outline-primary btn-lg">
+          <i class="bi bi-person-plus me-2"></i>Registrarse
+        </a>
+      </div>
+    {% endif %}
+  </div>
+  <div class="col-lg-6">
+    <div class="text-center">
+      <div class="card border-0 bg-light shadow-lg p-4">
+        <i class="bi bi-gear-wide-connected text-primary mb-3" style="font-size: 5rem;"></i>
+        <h5 class="fw-bold">Sistema en Funcionamiento</h5>
+        <p class="text-muted mb-0">Gestión profesional de servicios técnicos</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Características del Sistema -->
+<div class="row g-4 mb-5">
+  <div class="col-12">
+    <h2 class="section-title text-center mb-4">
+      ¿Por qué usar nuestro sistema?
+    </h2>
+  </div>
+  
+  <div class="col-md-6 col-lg-3">
+    <div class="card h-100 border-0 shadow-sm text-center p-4">
+      <div class="card-body">
+        <i class="bi bi-lightning-charge text-warning mb-3" style="font-size: 3rem;"></i>
+        <h5 class="fw-bold">Gestión Rápida</h5>
+        <p class="text-muted mb-0">
+          Crea y asigna requerimientos en segundos con nuestro sistema automatizado
+        </p>
+      </div>
+    </div>
+  </div>
+  
+  <div class="col-md-6 col-lg-3">
+    <div class="card h-100 border-0 shadow-sm text-center p-4">
+      <div class="card-body">
+        <i class="bi bi-bell-fill text-primary mb-3" style="font-size: 3rem;"></i>
+        <h5 class="fw-bold">Notificaciones</h5>
+        <p class="text-muted mb-0">
+          Recibe actualizaciones en tiempo real sobre el progreso de tus requerimientos
+        </p>
+      </div>
+    </div>
+  </div>
+  
+  <div class="col-md-6 col-lg-3">
+    <div class="card h-100 border-0 shadow-sm text-center p-4">
+      <div class="card-body">
+        <i class="bi bi-people-fill text-success mb-3" style="font-size: 3rem;"></i>
+        <h5 class="fw-bold">Colaboración</h5>
+        <p class="text-muted mb-0">
+          Facilita la comunicación entre solicitantes, técnicos y supervisores
+        </p>
+      </div>
+    </div>
+  </div>
+  
+  <div class="col-md-6 col-lg-3">
+    <div class="card h-100 border-0 shadow-sm text-center p-4">
+      <div class="card-body">
+        <i class="bi bi-graph-up-arrow text-info mb-3" style="font-size: 3rem;"></i>
+        <h5 class="fw-bold">Reportes</h5>
+        <p class="text-muted mb-0">
+          Analiza el rendimiento y optimiza tus procesos con estadísticas detalladas
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if request.user.is_authenticated %}
+<!-- Panel de Usuario -->
+<div class="row g-4 mb-5">
+  <div class="col-12">
+    <h2 class="section-title text-center mb-4">
+      Tu Panel de Control
+    </h2>
+  </div>
+  
+  <div class="col-md-6">
+    <div class="card border-0 shadow-sm">
+      <div class="card-body p-4">
+        <div class="d-flex align-items-center mb-3">
+          <i class="bi bi-person-circle text-primary me-3" style="font-size: 2rem;"></i>
+          <div>
+            <h5 class="mb-0 fw-bold">{{ request.user.get_full_name|default:request.user.username }}</h5>
+            <small class="text-muted">
+              {{ request.user.get_role_display }} 
+              {% if request.user.office %}
+                - {{ request.user.office.name }}
+              {% endif %}
+            </small>
+          </div>
+        </div>
+        <p class="text-muted mb-3">
+          {% if request.user.is_jefe %}
+            Como Jefe, puedes gestionar usuarios, oficinas y supervisar todos los requerimientos del sistema.
+          {% elif request.user.is_supervisor %}
+            Como Supervisor, puedes asignar técnicos y supervisar los requerimientos de tu oficina.
+          {% elif request.user.is_tecnico %}
+            Como Técnico, puedes actualizar el estado de tus requerimientos asignados.
+          {% endif %}
+        </p>
+        <a href="/accounts/notifications/" class="btn btn-outline-primary">
+          <i class="bi bi-bell me-2"></i>Ver Notificaciones
+        </a>
+      </div>
+    </div>
+  </div>
+  
+  <div class="col-md-6">
+    <div class="card border-0 shadow-sm">
+      <div class="card-body p-4">
+        <h5 class="fw-bold mb-3">
+          <i class="bi bi-rocket-takeoff me-2"></i>Acciones Rápidas
+        </h5>
+        <div class="d-grid gap-2">
+          <a href="/tickets/" class="btn btn-outline-primary">
+            <i class="bi bi-list-task me-2"></i>Ver Todos los Requerimientos
+          </a>
+          <a href="/accounts/profile/" class="btn btn-outline-secondary">
+            <i class="bi bi-person-gear me-2"></i>Mi Perfil
+          </a>
+          {% if request.user.is_jefe %}
+            <a href="/tickets/crear/" class="btn btn-outline-success">
+              <i class="bi bi-plus-circle me-2"></i>Crear Nuevo Requerimiento
+            </a>
+            <a href="/accounts/users/" class="btn btn-outline-secondary">
+              <i class="bi bi-people me-2"></i>Gestionar Usuarios
+            </a>
+          {% endif %}
+          {% if request.user.is_supervisor %}
+            <a href="/oficinas/" class="btn btn-outline-secondary">
+              <i class="bi bi-building me-2"></i>Gestionar Oficina
+            </a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Información del Sistema -->
+<div class="card border-0 bg-primary text-white shadow-lg">
+  <div class="card-body text-center p-5">
+    <h3 class="fw-bold mb-3">Sistema Profesional de Gestión</h3>
+    <p class="mb-4 fs-5">
+      Optimiza tus procesos de servicio técnico con herramientas modernas y eficientes
+    </p>
+    <div class="row g-3">
+      <div class="col-md-4">
+        <div class="d-flex align-items-center justify-content-center">
+          <i class="bi bi-shield-check me-2" style="font-size: 1.5rem;"></i>
+          <span class="fw-medium">Seguro</span>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="d-flex align-items-center justify-content-center">
+          <i class="bi bi-speedometer2 me-2" style="font-size: 1.5rem;"></i>
+          <span class="fw-medium">Rápido</span>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="d-flex align-items-center justify-content-center">
+          <i class="bi bi-heart-fill me-2" style="font-size: 1.5rem;"></i>
+          <span class="fw-medium">Confiable</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .hero-bg {
+    background: linear-gradient(135deg, var(--secondary-gray) 0%, #ffffff 100%);
+  }
+  
+  .card:hover {
+    transform: translateY(-2px);
+    transition: all 0.3s ease;
+  }
+  
+  .btn-lg:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+  }
+</style>
+{% endblock %}

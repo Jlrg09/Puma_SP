@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+{% block title %}Editar usuario{% endblock %}
+{% block content %}
+<h1>Editar {{ obj.username }}</h1>
+
+<div class="alert alert-info mb-3">
+  <strong>Rol actual:</strong> {{ obj.get_role_display }}
+  {% if obj.role == 'TECNICO' and obj.office %}
+    <br><small class="text-muted">Al asignar una oficina, este usuario se convertirá automáticamente en Supervisor.</small>
+  {% elif obj.role == 'SUPERVISOR' and not obj.office %}
+    <br><small class="text-muted">Al remover la oficina, este usuario se convertirá automáticamente en Técnico.</small>
+  {% endif %}
+</div>
+
+<form method="post" class="col-12 col-md-6">
+  {% csrf_token %}
+  {{ form|crispy }}
+  <button class="btn btn-primary">Guardar</button>
+  <a class="btn btn-secondary" href="/accounts/users/">Volver</a>
+</form>
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block title %}{% if ticket.technician_id %}Reasignar{% else %}Asignar{% endif %} requerimiento{% endblock %}
+{% block content %}
+<h1>{% if ticket.technician_id %}Reasignar{% else %}Asignar{% endif %} requerimiento #{{ ticket.id }}</h1>
+{% if ticket.status == 'COMPLETED' %}
+  <div class="alert alert-info">El requerimiento está completado y no se puede (re)asignar.</div>
+{% else %}
+<form method="post" class="col-12 col-md-6">
+  {% csrf_token %}
+  <div class="mb-3">
+    <label class="form-label">Técnico</label>
+    <select name="technician" class="form-select">
+      <option value="self">Yo (Supervisor)</option>
+      {% for u in tecnicos %}
+        <option value="{{ u.id }}">{{ u.username }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <button class="btn btn-primary">Asignar</button>
+  <a class="btn btn-secondary" href="/tickets/">Cancelar</a>
+</form>
+{% endif %}
+{% endblock %}

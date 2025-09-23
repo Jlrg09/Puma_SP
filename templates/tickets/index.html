@@ -1,0 +1,267 @@
+{% extends 'base.html' %}
+{% block title %}Requerimientos - Gestor de Servicios{% endblock %}
+{% block content %}
+
+<!-- Header con título y botón de acción -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="page-title">
+      <i class="bi bi-list-task me-2"></i>Requerimientos de Servicio
+    </h1>
+    <p class="text-muted mb-0">Gestiona todos los requerimientos del sistema</p>
+  </div>
+  {% if request.user.is_jefe %}
+    <a class="btn btn-primary" href="/tickets/crear/">
+      <i class="bi bi-plus-circle me-2"></i>Nuevo Requerimiento
+    </a>
+  {% endif %}
+</div>
+
+<!-- Panel de filtros -->
+<div class="card mb-4">
+  <div class="card-header">
+    <h5 class="mb-0">
+      <i class="bi bi-funnel me-2"></i>Filtros
+    </h5>
+  </div>
+  <div class="card-body">
+    <form method="get">
+      <div class="row g-3">
+        <div class="col-12 col-md-6 col-lg-3">
+          <label class="form-label fw-medium">Buscar</label>
+          <div class="input-group">
+            <span class="input-group-text">
+              <i class="bi bi-search"></i>
+            </span>
+            <input class="form-control" type="text" name="q" placeholder="ID, solicitante..." value="{{ filters.q }}">
+          </div>
+        </div>
+
+        <div class="col-6 col-md-3 col-lg-2">
+          <label class="form-label fw-medium">Estado</label>
+          <select class="form-select" name="status">
+            <option value="">Todos</option>
+            <option value="ASSIGNED" {% if filters.status == 'ASSIGNED' %}selected{% endif %}>Asignado</option>
+            <option value="IN_PROGRESS" {% if filters.status == 'IN_PROGRESS' %}selected{% endif %}>En curso</option>
+            <option value="PENDING_SUPPLIES" {% if filters.status == 'PENDING_SUPPLIES' %}selected{% endif %}>Pendiente insumos</option>
+            <option value="COMPLETED" {% if filters.status == 'COMPLETED' %}selected{% endif %}>Completado</option>
+          </select>
+        </div>
+
+        <div class="col-6 col-md-3 col-lg-2">
+          <label class="form-label fw-medium">Prioridad</label>
+          <select class="form-select" name="priority">
+            <option value="">Todas</option>
+            {% for p in priority_choices %}
+              <option value="{{ p }}" {% if filters.priority == p %}selected{% endif %}>{{ p }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        {% if offices %}
+        <div class="col-6 col-md-6 col-lg-2">
+          <label class="form-label fw-medium">Oficina</label>
+          <select class="form-select" name="office">
+            <option value="">Todas</option>
+            {% for o in offices %}
+              <option value="{{ o.id }}" {% if filters.office == o.id %}selected{% endif %}>{{ o.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% endif %}
+
+        {% if tecnicos %}
+        <div class="col-6 col-md-6 col-lg-2">
+          <label class="form-label fw-medium">Técnico</label>
+          <select class="form-select" name="tech">
+            <option value="">Todos</option>
+            {% for u in tecnicos %}
+              <option value="{{ u.id }}" {% if filters.tech == u.id %}selected{% endif %}>{{ u.username }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% endif %}
+
+        <div class="col-12 col-lg-1 d-flex align-items-end">
+          <div class="d-grid w-100">
+            <button class="btn btn-primary" type="submit">
+              <i class="bi bi-funnel-fill"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="row mt-3">
+        <div class="col-12">
+          <a class="btn btn-link text-decoration-none p-0" href="/tickets/">
+            <i class="bi bi-arrow-clockwise me-1"></i>Limpiar filtros
+          </a>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Tabla de requerimientos -->
+<div class="card">
+  <div class="card-header">
+    <div class="d-flex justify-content-between align-items-center">
+      <h5 class="mb-0">
+        <i class="bi bi-table me-2"></i>Lista de Requerimientos
+      </h5>
+      <small class="text-muted">
+        <i class="bi bi-arrow-clockwise me-1"></i>Actualización automática
+      </small>
+    </div>
+  </div>
+  
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead class="table-light">
+        <tr>
+          <th scope="col" class="text-center">ID</th>
+          <th scope="col">Solicitante</th>
+          <th scope="col">Oficina Origen</th>
+          <th scope="col">Oficina Asignada</th>
+          <th scope="col" class="text-center">Prioridad</th>
+          <th scope="col" class="text-center">Estado</th>
+          <th scope="col">Técnico</th>
+          <th scope="col" class="text-center">Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="tickets-tbody">
+        {% include 'tickets/_table_body.html' %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Estadísticas de técnicos -->
+{% if tech_counts %}
+<div class="card mt-4">
+  <div class="card-header">
+    <h5 class="mb-0">
+      <i class="bi bi-bar-chart me-2"></i>Carga de Trabajo por Técnico
+    </h5>
+  </div>
+  <div class="card-body">
+    <div class="row g-3">
+      {% for u in tech_counts %}
+        <div class="col-12 col-md-6 col-lg-4">
+          <div class="d-flex align-items-center p-3 bg-light rounded">
+            <i class="bi bi-person-badge text-primary me-3" style="font-size: 1.5rem;"></i>
+            <div>
+              <h6 class="mb-0 fw-bold">{{ u.username }}</h6>
+              <small class="text-muted">{{ u.asignados }} requerimiento{{ u.asignados|pluralize }}</small>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Paginación -->
+{% if tickets.paginator.num_pages > 1 %}
+<nav aria-label="Paginación" class="mt-4">
+  <div class="d-flex justify-content-center">
+    <ul class="pagination pagination-lg">
+      {% if tickets.has_previous %}
+        <li class="page-item">
+          <a class="page-link" href="?page={{ tickets.previous_page_number }}&status={{ filters.status }}&priority={{ filters.priority }}&office={{ filters.office }}&tech={{ filters.tech }}&q={{ filters.q }}">
+            <i class="bi bi-chevron-left"></i>
+          </a>
+        </li>
+      {% else %}
+        <li class="page-item disabled">
+          <span class="page-link">
+            <i class="bi bi-chevron-left"></i>
+          </span>
+        </li>
+      {% endif %}
+      
+      <li class="page-item active">
+        <span class="page-link">
+          {{ tickets.number }} de {{ tickets.paginator.num_pages }}
+        </span>
+      </li>
+      
+      {% if tickets.has_next %}
+        <li class="page-item">
+          <a class="page-link" href="?page={{ tickets.next_page_number }}&status={{ filters.status }}&priority={{ filters.priority }}&office={{ filters.office }}&tech={{ filters.tech }}&q={{ filters.q }}">
+            <i class="bi bi-chevron-right"></i>
+          </a>
+        </li>
+      {% else %}
+        <li class="page-item disabled">
+          <span class="page-link">
+            <i class="bi bi-chevron-right"></i>
+          </span>
+        </li>
+      {% endif %}
+    </ul>
+  </div>
+</nav>
+{% endif %}
+<script>
+  (function(){
+    // Live update via WS
+    function reloadTbody(){
+      var params = new URLSearchParams(window.location.search);
+      params.set('partial', 'tbody');
+      fetch('/tickets/?' + params.toString(), { headers: { 'X-Requested-With': 'XMLHttpRequest' }})
+        .then(function(r){ return r.json(); })
+        .then(function(data){
+          var tb = document.getElementById('tickets-tbody');
+          if (tb) tb.innerHTML = data.html;
+        }).catch(function(){});
+    }
+    
+    // WebSocket simplificado para actualizaciones de tickets
+    (function() {
+      var ws = null;
+      var reconnectAttempts = 0;
+      var maxReconnectAttempts = 5;
+      
+      function createWebSocket() {
+        try {
+          var protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+          var host = window.location.host;
+          var wsUrl = protocol + '//' + host + '/ws/stats/';
+          
+          ws = new WebSocket(wsUrl);
+          
+          ws.onopen = function() {
+            console.log('Tickets WebSocket connected');
+            reconnectAttempts = 0;
+          };
+          
+          ws.onmessage = function(event) {
+            try {
+              var data = JSON.parse(event.data);
+              if (data.type === 'stats_update' || data.type === 'ticket_update') {
+                reloadTbody();
+              }
+            } catch (e) {
+              console.error('Error parsing WebSocket message:', e);
+            }
+          };
+          
+          ws.onclose = function() {
+            if (reconnectAttempts < maxReconnectAttempts) {
+              reconnectAttempts++;
+              setTimeout(createWebSocket, 2000 * reconnectAttempts);
+            }
+          };
+          
+        } catch (e) {
+          console.error('Error creating tickets WebSocket:', e);
+        }
+      }
+      
+      createWebSocket();
+    })();
+  })();
+  </script>
+{% endblock %}

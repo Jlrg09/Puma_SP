@@ -1,0 +1,24 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Run Django dev server",
+			"type": "shell",
+			"command": "&",
+			"args": [
+				"'C:/FlutterProjects/PumaSP APP/.venv/Scripts/daphne.exe'",
+				"-b",
+				"127.0.0.1",
+				"-p",
+				"8000",
+				"gestor_servicios.asgi:application"
+			],
+			"isBackground": true,
+			"problemMatcher": [],
+			"group": "build",
+			"options": {
+				"cwd": "C:/FlutterProjects/PumaSP APP"
+			}
+		}
+	]
+}

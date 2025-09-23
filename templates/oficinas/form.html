@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<h1>{{ title }}</h1>
+<form method="post" class="col-12 col-md-6">
+  {% csrf_token %}
+  {{ form|crispy }}
+  {% if office %}
+  <div class="mb-3">
+    <label class="form-label">Supervisor</label>
+    <select class="form-select" name="supervisor">
+      <option value="">-- Ninguno --</option>
+      {% for u in candidates %}
+        <option value="{{ u.id }}" {% if office.supervisor and office.supervisor.id == u.id %}selected{% endif %}>
+          {{ u.username }} - {{ u.get_role_display }}{% if u.role == 'TECNICO' %} (será promovido a Supervisor){% endif %}
+        </option>
+      {% endfor %}
+    </select>
+    <div class="form-text">
+      Los técnicos asignados a esta oficina pueden ser promovidos a supervisor. Los supervisores existentes también están disponibles.
+    </div>
+  </div>
+  {% endif %}
+  <button class="btn btn-primary">Guardar</button>
+  <a class="btn btn-secondary" href="/oficinas/">Cancelar</a>
+</form>
+{% endblock %}
