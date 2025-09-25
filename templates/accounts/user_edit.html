@@ -1,22 +1,63 @@
 {% extends 'base.html' %}
+{% load name_filters %}
 {% load crispy_forms_tags %}
 {% block title %}Editar usuario{% endblock %}
 {% block content %}
-<h1>Editar {{ obj.username }}</h1>
 
-<div class="alert alert-info mb-3">
-  <strong>Rol actual:</strong> {{ obj.get_role_display }}
-  {% if obj.role == 'TECNICO' and obj.office %}
-    <br><small class="text-muted">Al asignar una oficina, este usuario se convertirá automáticamente en Supervisor.</small>
-  {% elif obj.role == 'SUPERVISOR' and not obj.office %}
-    <br><small class="text-muted">Al remover la oficina, este usuario se convertirá automáticamente en Técnico.</small>
-  {% endif %}
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="mb-4">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item">
+      <a href="/" class="text-decoration-none">
+        <i class="bi bi-house me-1"></i>Inicio
+      </a>
+    </li>
+    <li class="breadcrumb-item"><a href="/accounts/users/" class="text-decoration-none">Usuarios</a></li>
+  <li class="breadcrumb-item active" aria-current="page">Editar {{ obj|first_last }}</li>
+  </ol>
+</nav>
+
+<!-- Header -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+  <h1 class="page-title"><i class="bi bi-person-gear me-2"></i>Editar {{ obj|first_last }}</h1>
+    <p class="text-muted mb-0">Actualiza información y rol del usuario</p>
+  </div>
+  <div class="d-none d-md-block">
+    <a href="/accounts/users/" class="btn btn-outline-secondary">
+      <i class="bi bi-arrow-left me-2"></i>Volver al listado
+    </a>
+  </div>
 </div>
 
-<form method="post" class="col-12 col-md-6">
-  {% csrf_token %}
-  {{ form|crispy }}
-  <button class="btn btn-primary">Guardar</button>
-  <a class="btn btn-secondary" href="/accounts/users/">Volver</a>
-</form>
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-8">
+    <form method="post" class="card shadow-sm border-0">
+      {% csrf_token %}
+      <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-pencil-square me-2"></i>Datos del usuario</h5>
+      </div>
+      <div class="card-body">
+        <div class="alert alert-info mb-3">
+          <strong>Rol actual:</strong> {{ obj.get_role_display }}
+          {% if obj.role == 'TECNICO' and obj.office %}
+            <br><small class="text-muted">Al asignar una oficina, este usuario se convertirá automáticamente en Supervisor.</small>
+          {% elif obj.role == 'SUPERVISOR' and not obj.office %}
+            <br><small class="text-muted">Al remover la oficina, este usuario se convertirá automáticamente en Técnico.</small>
+          {% endif %}
+        </div>
+        {{ form|crispy }}
+      </div>
+      <div class="card-footer d-flex justify-content-end gap-2">
+        <a class="btn btn-outline-secondary" href="/accounts/users/">
+          <i class="bi bi-x-circle me-1"></i>Cancelar
+        </a>
+        <button class="btn btn-primary">
+          <i class="bi bi-save me-1"></i>Guardar
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
 {% endblock %}

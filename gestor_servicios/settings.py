@@ -76,6 +76,8 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                # App brand (logo/name) available on all templates
+                'gestor_servicios.context_processors.brand',
             ],
         },
     },
@@ -167,3 +169,13 @@ CHANNEL_LAYERS = {
         },
     }
 }
+
+# --- App Branding (logo and name) ---
+# You can override these with environment variables or in your .env file
+# APP_BRAND_NAME: Text shown next to the logo in the top navbar
+# APP_BRAND_TAGLINE: Optional smaller text; not shown by default
+# APP_BRAND_LOGO: Static path (relative to STATIC_URL) to your logo file
+APP_BRAND_NAME = os.getenv('APP_BRAND_NAME', 'PumaSP')
+APP_BRAND_TAGLINE = os.getenv('APP_BRAND_TAGLINE', '')
+# Default to favicon.svg to avoid missing file; place your own under static/branding/logo.svg and set APP_BRAND_LOGO
+APP_BRAND_LOGO = os.getenv('APP_BRAND_LOGO', 'favicon.svg')

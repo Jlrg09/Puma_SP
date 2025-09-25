@@ -19,6 +19,13 @@
 			"options": {
 				"cwd": "C:/FlutterProjects/PumaSP APP"
 			}
+		},
+		{
+			"label": "Run Django dev server",
+			"type": "shell",
+			"command": "\"C:/FlutterProjects/PumaSP APP/.venv/Scripts/python.exe\" manage.py runserver",
+			"isBackground": true,
+			"group": "build"
 		}
 	]
 }

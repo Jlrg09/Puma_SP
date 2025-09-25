@@ -116,7 +116,7 @@
           {% endif %}
         </span>
         <div class="text-end">
-          <div class="fw-medium">{{ request.user.get_full_name|default:request.user.username }}</div>
+          <div class="fw-medium" title="@{{ request.user.username }}">{{ request.user.get_full_name|default:'Sin nombre' }}</div>
           <small class="opacity-75">{{ "now"|date:"d/m/Y H:i" }}</small>
         </div>
       </div>
@@ -143,7 +143,7 @@
       <div class="stat-card">
         <div class="card-body position-relative p-4">
           <i class="bi bi-files stat-icon"></i>
-          <div class="stat-value">{{ total_tickets }}</div>
+          <div id="kpi-total-tickets" class="stat-value">{{ total_tickets }}</div>
           <div class="stat-label">Total de Requerimientos</div>
         </div>
       </div>
@@ -152,7 +152,7 @@
       <div class="stat-card">
         <div class="card-body position-relative p-4">
           <i class="bi bi-check-circle-fill stat-icon text-success"></i>
-          <div class="stat-value text-success">
+          <div id="kpi-completados" class="stat-value text-success">
             {% for s in by_status %}
               {% if s.code == 'COMPLETED' %}{{ s.total }}{% endif %}
             {% empty %}0{% endfor %}
@@ -165,12 +165,108 @@
       <div class="stat-card">
         <div class="card-body position-relative p-4">
           <i class="bi bi-clock-fill stat-icon text-warning"></i>
-          <div class="stat-value text-warning">
+          <div id="kpi-en-progreso" class="stat-value text-warning">
             {% for s in by_status %}
               {% if s.code == 'IN_PROGRESS' %}{{ s.total }}{% endif %}
             {% empty %}0{% endfor %}
           </div>
           <div class="stat-label">En Progreso</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filtros para el Jefe -->
+  <div class="row g-4 mb-4">
+    <div class="col-12">
+      <div class="card border-0 shadow-sm filters-card">
+        <div class="card-header text-white d-flex align-items-center justify-content-between">
+          <h6 class="mb-0 d-flex align-items-center">
+            <i class="bi bi-funnel me-2"></i>Filtros de Estadísticas
+          </h6>
+          <span class="small d-flex align-items-center gap-2">
+            <span class="text-white-50">Activos</span>
+            <span class="badge bg-white text-primary" id="filters-count">0</span>
+          </span>
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label for="office-filter" class="form-label fw-semibold">Oficina</label>
+              <div class="input-group input-group-lg">
+                <span class="input-group-text bg-light"><i class="bi bi-building"></i></span>
+                <select id="office-filter" class="form-select">
+                  <option value="all">Todas las oficinas</option>
+                  {% for office in all_offices %}
+                    <option value="{{ office.id }}">{{ office.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <label for="technician-filter" class="form-label fw-semibold">Técnico</label>
+              <div class="input-group input-group-lg">
+                <span class="input-group-text bg-light"><i class="bi bi-person-badge"></i></span>
+                <select id="technician-filter" class="form-select" disabled>
+                  <option value="all">Selecciona una oficina primero</option>
+                </select>
+              </div>
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+              <div class="ms-auto d-flex flex-wrap gap-2 w-100 justify-content-md-end">
+                <button id="apply-filters" class="btn btn-primary px-4">
+                  <i class="bi bi-search me-1"></i>Aplicar
+                </button>
+                <button id="reset-filters" class="btn btn-outline-secondary">
+                  <i class="bi bi-arrow-clockwise me-1"></i>Restablecer
+                </button>
+                <button id="export-csv" class="btn btn-outline-primary">
+                  <i class="bi bi-download me-1"></i>Exportar CSV
+                </button>
+              </div>
+            </div>
+          </div>
+          <hr class="my-3">
+          <div class="row g-3 align-items-end">
+            <div class="col-md-3">
+              <label for="date-start" class="form-label fw-semibold">Desde</label>
+              <div class="input-group input-group-lg">
+                <span class="input-group-text bg-light"><i class="bi bi-calendar-event"></i></span>
+                <input id="date-start" type="date" class="form-control" />
+              </div>
+            </div>
+            <div class="col-md-3">
+              <label for="date-end" class="form-label fw-semibold">Hasta</label>
+              <div class="input-group input-group-lg">
+                <span class="input-group-text bg-light"><i class="bi bi-calendar2-check"></i></span>
+                <input id="date-end" type="date" class="form-control" />
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="d-flex align-items-center justify-content-between">
+                <label class="form-label m-0 fw-semibold">Estados</label>
+                <a href="#" id="clear-statuses" class="small text-decoration-none">Limpiar</a>
+              </div>
+              <div class="d-flex flex-wrap gap-2 mt-1" id="status-checkboxes">
+                {% for s in status_choices %}
+                  {% with code=s.code %}
+                  <input class="btn-check" type="checkbox" value="{{ s.code }}" id="status-{{ s.code }}" autocomplete="off">
+                  <label class="btn btn-sm rounded-pill btn-outline-{% if code == 'DRAFT' %}secondary{% elif code == 'ASSIGNED' %}primary{% elif code == 'IN_PROGRESS' %}warning{% elif code == 'PENDING_SUPPLIES' %}info{% elif code == 'COMPLETED' %}success{% else %}secondary{% endif %}" for="status-{{ s.code }}">
+                    {{ s.label }}
+                  </label>
+                  {% endwith %}
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+          
+          <!-- Información del filtro actual -->
+          <div id="filter-info" class="mt-3" style="display: none;">
+            <div class="alert alert-info mb-0">
+              <i class="bi bi-info-circle me-2"></i>
+              <span id="filter-description"></span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -192,7 +288,7 @@
               <canvas id="jefeStatusChart"></canvas>
             </div>
             
-            <div class="status-breakdown">
+            <div id="jefe-status-breakdown" class="status-breakdown">
               {% for s in by_status %}
                 <div class="d-flex align-items-center justify-content-between py-2 border-bottom">
                   <div class="d-flex align-items-center">
@@ -231,10 +327,20 @@
     <div class="col-12 col-lg-6">
       <div class="chart-card">
         <div class="card-header bg-white border-bottom-0 pb-0">
-          <h5 class="mb-0">
-            <i class="bi bi-building me-2 text-primary"></i>
-            Distribución por Oficina
-          </h5>
+          <div class="d-flex align-items-center justify-content-between">
+            <h5 class="mb-0">
+              <i class="bi bi-building me-2 text-primary"></i>
+              <span id="office-chart-title-text">Distribución por Oficina</span>
+            </h5>
+            <div class="btn-group btn-group-sm" role="group" aria-label="Vista desglose">
+              <input type="radio" class="btn-check" name="breakdown-view" id="view-offices" value="offices" autocomplete="off" checked>
+              <label class="btn btn-outline-primary" for="view-offices">Oficinas</label>
+              <input type="radio" class="btn-check" name="breakdown-view" id="view-technicians" value="technicians" autocomplete="off" disabled>
+              <label class="btn btn-outline-primary" for="view-technicians">Técnicos</label>
+              <input type="radio" class="btn-check" name="breakdown-view" id="view-supervisors" value="supervisors" autocomplete="off">
+              <label class="btn btn-outline-primary" for="view-supervisors">Supervisores</label>
+            </div>
+          </div>
         </div>
         <div class="card-body">
           {% if by_office %}
@@ -242,7 +348,7 @@
               <canvas id="jefeOfficeChart"></canvas>
             </div>
             
-            <div class="office-breakdown">
+            <div id="jefe-office-breakdown" class="office-breakdown">
               {% for o in by_office %}
                 <div class="mb-3">
                   <div class="d-flex justify-content-between align-items-center mb-1">
@@ -271,6 +377,29 @@
               <h6 class="text-muted">Sin datos por oficina</h6>
             </div>
           {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Gráfico dedicado: Supervisores -->
+  <div class="row g-4 mt-1">
+    <div class="col-12">
+      <div class="chart-card">
+        <div class="card-header bg-white border-bottom-0 pb-0">
+          <h5 class="mb-0">
+            <i class="bi bi-person-fill-gear me-2 text-primary"></i>
+            Distribución por Supervisor
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="chart-container mb-4" style="height: 300px;">
+            <canvas id="jefeSupervisorChart"></canvas>
+          </div>
+          <div id="jefe-supervisor-empty" class="empty-state text-center py-3" style="display: none;">
+            <i class="bi bi-people text-muted me-2"></i>
+            <span class="text-muted">Sin datos por supervisor</span>
+          </div>
         </div>
       </div>
     </div>
@@ -417,7 +546,7 @@
                   <span class="badge bg-primary rounded-pill">{{ top_tecnico_total }}</span>
                 </div>
               </div>
-              <h5 class="fw-bold mb-2">{{ top_tecnico.get_full_name|default:top_tecnico.username }}</h5>
+              <h5 class="fw-bold mb-2">{{ top_tecnico.get_full_name|default:'Sin nombre' }}</h5>
               <p class="text-muted mb-3">{{ top_tecnico.email }}</p>
               <div class="row g-3">
                 <div class="col-6">
@@ -631,7 +760,7 @@
             <a href="/tickets/" class="btn btn-primary btn-sm w-100 mb-2">
               <i class="bi bi-list-task me-2"></i>Ver Mis Requerimientos
             </a>
-            <a href="/tickets/create/" class="btn btn-outline-primary btn-sm w-100">
+            <a href="{% url 'ticket_create' %}" class="btn btn-outline-primary btn-sm w-100">
               <i class="bi bi-plus-circle me-2"></i>Solicitar Nuevo
             </a>
           </div>
@@ -939,6 +1068,31 @@ document.addEventListener('DOMContentLoaded', function() {
   .stat-card:nth-child(2) { animation-delay: 0.1s; }
   .stat-card:nth-child(3) { animation-delay: 0.2s; }
   .stat-card:nth-child(4) { animation-delay: 0.3s; }
+  
+  .filter-card {
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  }
+  
+  .filters-card .card-header {
+    background: linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-blue-light) 100%) !important;
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+  }
+  .filters-card .input-group-lg > .form-control,
+  .filters-card .input-group-lg > .input-group-text,
+  .filters-card .form-select {
+    border-radius: 10px;
+  }
+  .filters-card .btn-outline-warning { color: #b08900; border-color: #ffec99; }
+  .filters-card .btn-outline-warning:hover, .filters-card .btn-outline-warning.active { background-color: #ffe08a; border-color: #ffd666; color: #7a5f00; }
+  .filters-card .btn-outline-info { color: #0c5460; border-color: #b6effb; }
+  .filters-card .btn-outline-info:hover, .filters-card .btn-outline-info.active { background-color: #9eeaf9; border-color: #86e0f5; color: #063d45; }
+  
+  #filter-info .alert {
+    background-color: #e3f2fd;
+    color: #1565c0;
+    border: 1px solid #bbdefb;
+  }
 </style>
 
 <script>
@@ -948,108 +1102,1214 @@ document.addEventListener('DOMContentLoaded', function() {
   var role = root?.dataset?.role || 'NONE';
   var officeId = root?.dataset?.officeId ? parseInt(root.dataset.officeId) : null;
   var techId = root?.dataset?.techId ? parseInt(root.dataset.techId) : null;
-    function updateText(id, value){
-      var el = document.getElementById(id);
-      if (el) el.textContent = value;
+  
+  // Colores para gráficos
+  var chartColors = {
+    'DRAFT': '#6c757d',        // gris para borrador
+    'ASSIGNED': '#0d6efd',     // azul para asignado
+    'IN_PROGRESS': '#ffc107',  // amarillo para en progreso
+    'PENDING_SUPPLIES': '#fd7e14', // naranja para pendiente insumos
+    'COMPLETED': '#198754',    // verde para completado
+    'CANCELLED': '#dc3545'     // rojo para cancelado
+  };
+
+  // Variables para mantener las instancias de los gráficos
+  var jefeChart = null;
+  var jefeOfficeChart = null;
+  var jefeSupervisorChart = null;
+  var supervisorChart = null;
+  var tecnicoChart = null;
+
+  function updateText(id, value){
+    var el = document.getElementById(id);
+    if (el) el.textContent = value;
+  }
+    
+  function renderList(containerId, rows, labelKey, valueKey){
+    var list = document.getElementById(containerId);
+    if (!list) return;
+    var html = '';
+    if (rows && rows.length){
+      html = rows.map(function(r){
+        var label = r[labelKey];
+        var value = r[valueKey];
+        return '<li class="list-group-item d-flex justify-content-between align-items-center">'
+          + '<span>' + label + '</span>'
+          + '<span class="badge bg-secondary rounded-pill">' + value + '</span>'
+          + '</li>';
+      }).join('');
+    } else {
+      html = '<li class="list-group-item text-muted">Sin datos</li>';
     }
-    function renderList(containerId, rows, labelKey, valueKey){
-      var list = document.getElementById(containerId);
-      if (!list) return;
-      var html = '';
-      if (rows && rows.length){
-        html = rows.map(function(r){
-          var label = r[labelKey];
-          var value = r[valueKey];
-          return '<li class="list-group-item d-flex justify-content-between align-items-center">'
-            + '<span>' + label + '</span>'
-            + '<span class="badge bg-secondary rounded-pill">' + value + '</span>'
-            + '</li>';
-        }).join('');
-      } else {
-        html = '<li class="list-group-item text-muted">Sin datos</li>';
+    list.innerHTML = html;
+  }
+
+  // Función para inicializar/actualizar el gráfico del jefe
+  function updateJefeChart(data) {
+    // Obtener datos para el gráfico
+    var statusData = data.by_status || [];
+    
+    // Si no hay datos, no crear el gráfico
+    if (!statusData || statusData.length === 0) {
+      console.log("No hay datos de estado para el jefe");
+      return;
+    }
+    
+    var labels = statusData.map(function(item) { return item.status; });
+    var values = statusData.map(function(item) { return item.total; });
+    
+    // Verificar que hay valores válidos
+    var totalValues = values.reduce(function(sum, val) { return sum + val; }, 0);
+    if (totalValues === 0) {
+      console.log("Todos los valores son 0, no se muestra el gráfico del jefe");
+      return;
+    }
+    
+    // Asignar colores basados en el estado
+    var colors = [];
+    statusData.forEach(function(item) {
+      // Si tenemos código directamente, usarlo, si no, mapear desde el nombre
+      var statusCode = item.code;
+      if (!statusCode) {
+        var statusName = item.status;
+        if (statusName.includes('Borrador')) statusCode = 'DRAFT';
+        else if (statusName.includes('Asignado')) statusCode = 'ASSIGNED';
+        else if (statusName.includes('Progreso')) statusCode = 'IN_PROGRESS';
+        else if (statusName.includes('Pendiente')) statusCode = 'PENDING_SUPPLIES';
+        else if (statusName.includes('Completado')) statusCode = 'COMPLETED';
+        else if (statusName.includes('Cancelado')) statusCode = 'CANCELLED';
       }
-      list.innerHTML = html;
+      
+      colors.push(chartColors[statusCode] || '#6c757d');
+    });
+    
+    var canvas = document.getElementById('jefeStatusChart');
+    if (!canvas) {
+      console.error("Canvas jefeStatusChart no encontrado");
+      return;
     }
-    function renderSupervisor(data){
-      // KPIs simples
-      updateText('kpi-asignados-oficina', data.asignados_oficina);
-      updateText('kpi-tecnicos-activos', data.tecnicos_activos);
-      updateText('kpi-mis-supervisados', data.mis_supervisados);
-      // Lista por estado
-      renderList('list-por-estado', data.por_estado || [], 'status', 'total');
-      // Top técnico
-      var hasTop = !!(data.top_tecnico && data.top_tecnico.name);
-      var cont = document.getElementById('top-tech-container');
-      var empty = document.getElementById('top-tech-empty');
-      if (cont && empty){
-        if (hasTop){
-          cont.style.display = '';
-          empty.style.display = 'none';
-          updateText('top-tech-name', data.top_tecnico.name);
-          updateText('top-tech-email', data.top_tecnico.email || '');
-          updateText('top-tech-total', data.top_tecnico.total);
-        } else {
-          cont.style.display = 'none';
-          empty.style.display = '';
+    // Si existe un gráfico previo creado en el canvas, reutilizarlo
+    try {
+      var existing = Chart.getChart(canvas);
+      if (existing && !jefeChart) {
+        jefeChart = existing;
+      }
+    } catch (e) {
+      // Chart.getChart puede no existir en alguna versión; ignorar
+    }
+
+    // Si ya existe el gráfico, actualizarlo
+    if (jefeChart) {
+      jefeChart.data.labels = labels;
+      jefeChart.data.datasets[0].data = values;
+      jefeChart.data.datasets[0].backgroundColor = colors;
+      jefeChart.update();
+      return;
+    }
+
+    // Si no existe, crear nuevo gráfico
+    jefeChart = new Chart(canvas.getContext('2d'), {
+      type: 'doughnut',
+      data: {
+        labels: labels,
+        datasets: [{
+          data: values,
+          backgroundColor: colors,
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'bottom'
+          },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                var label = context.label || '';
+                var value = context.raw || 0;
+                var total = context.dataset.data.reduce((a, b) => a + b, 0);
+                var percentage = Math.round((value / total) * 100);
+                return label + ': ' + value + ' (' + percentage + '%)';
+              }
+            }
+          }
         }
       }
+    });
+  }
+
+  // Función para inicializar/actualizar el gráfico del supervisor
+  function updateSupervisorChart(data) {
+    var statusData = data.por_estado || [];
+    
+    // Si no hay datos, no crear el gráfico
+    if (!statusData || statusData.length === 0) {
+      console.log("No hay datos de estado para el supervisor");
+      return;
     }
-    function renderJefe(data){
-      updateText('kpi-total-tickets', data.total_tickets);
-      // by_status: [{status,total}]
-  renderList('list-jefe-por-estado', data.by_status || [], 'status', 'total');
-      // by_office: [{office,total}]
-  renderList('list-jefe-por-oficina', data.by_office || [], 'office', 'total');
+    
+    var labels = statusData.map(function(item) { return item.status; });
+    var values = statusData.map(function(item) { return item.total; });
+    
+    // Verificar que hay valores válidos
+    var totalValues = values.reduce(function(sum, val) { return sum + val; }, 0);
+    if (totalValues === 0) {
+      console.log("Todos los valores son 0, no se muestra el gráfico");
+      return;
     }
-    function renderTecnico(data){
-      updateText('kpi-tec-asignados', data.asignados);
-      updateText('kpi-tec-completados', data.completados);
-      updateText('kpi-tec-pend-insumos', data.pendientes_insumos);
-      renderList('list-tec-por-estado', data.por_estado || [], 'status', 'total');
+    
+    // Asignar colores basados en el estado - lógica especial ya que la API no devuelve códigos
+    var colors = [];
+    statusData.forEach(function(item) {
+      // Mapear desde el nombre del estado al código
+      var statusName = item.status;
+      var statusCode = '';
+      
+      if (statusName.includes('Borrador')) statusCode = 'DRAFT';
+      else if (statusName.includes('Asignado')) statusCode = 'ASSIGNED';
+      else if (statusName.includes('Progreso')) statusCode = 'IN_PROGRESS';
+      else if (statusName.includes('Pendiente')) statusCode = 'PENDING_SUPPLIES';
+      else if (statusName.includes('Completado')) statusCode = 'COMPLETED';
+      else if (statusName.includes('Cancelado')) statusCode = 'CANCELLED';
+      
+      colors.push(chartColors[statusCode] || '#6c757d');
+    });
+    
+    var ctx = document.getElementById('supervisorStatusChart');
+    if (!ctx) {
+      console.error("Canvas supervisorStatusChart no encontrado");
+      return;
     }
+    
+    if (supervisorChart) {
+      supervisorChart.data.labels = labels;
+      supervisorChart.data.datasets[0].data = values;
+      supervisorChart.data.datasets[0].backgroundColor = colors;
+      supervisorChart.update();
+      return;
+    }
+    
+    supervisorChart = new Chart(ctx, {
+      type: 'pie',
+      data: {
+        labels: labels,
+        datasets: [{
+          data: values,
+          backgroundColor: colors,
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'bottom'
+          },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                var label = context.label || '';
+                var value = context.raw || 0;
+                var total = context.dataset.data.reduce((a, b) => a + b, 0);
+                var percentage = Math.round((value / total) * 100);
+                return label + ': ' + value + ' (' + percentage + '%)';
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // Función para inicializar/actualizar el gráfico del técnico
+  function updateTecnicoChart(data) {
+    var statusData = data.por_estado || [];
+    var labels = statusData.map(function(item) { return item.status; });
+    var values = statusData.map(function(item) { return item.total; });
+    
+    // Asignar colores basados en el estado - lógica especial ya que la API no devuelve códigos
+    var colors = [];
+    statusData.forEach(function(item) {
+      // Mapear desde el nombre del estado al código
+      var statusName = item.status;
+      var statusCode = '';
+      
+      if (statusName.includes('Borrador')) statusCode = 'DRAFT';
+      else if (statusName.includes('Asignado')) statusCode = 'ASSIGNED';
+      else if (statusName.includes('Progreso')) statusCode = 'IN_PROGRESS';
+      else if (statusName.includes('Pendiente')) statusCode = 'PENDING_SUPPLIES';
+      else if (statusName.includes('Completado')) statusCode = 'COMPLETED';
+      else if (statusName.includes('Cancelado')) statusCode = 'CANCELLED';
+      
+      colors.push(chartColors[statusCode] || '#6c757d');
+    });
+    
+    var ctx = document.getElementById('tecnicoStatusChart');
+    if (!ctx) return;
+    
+    if (tecnicoChart) {
+      tecnicoChart.data.labels = labels;
+      tecnicoChart.data.datasets[0].data = values;
+      tecnicoChart.data.datasets[0].backgroundColor = colors;
+      tecnicoChart.update();
+      return;
+    }
+    
+    tecnicoChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Requerimientos por estado',
+          data: values,
+          backgroundColor: colors,
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: false
+          },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                var label = context.dataset.label || '';
+                var value = context.raw || 0;
+                return label + ': ' + value;
+              }
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              precision: 0
+            }
+          }
+        }
+      }
+    });
+  }
+
+  function renderSupervisor(data){
+    // KPIs simples
+    updateText('kpi-asignados-oficina', data.asignados_oficina);
+    updateText('kpi-tecnicos-activos', data.tecnicos_activos);
+    updateText('kpi-mis-supervisados', data.mis_supervisados);
+    // Lista por estado
+    renderList('list-por-estado', data.por_estado || [], 'status', 'total');
+    // Top técnico
+    var hasTop = !!(data.top_tecnico && data.top_tecnico.name);
+    var cont = document.getElementById('top-tech-container');
+    var empty = document.getElementById('top-tech-empty');
+    if (cont && empty){
+      if (hasTop){
+        cont.style.display = '';
+        empty.style.display = 'none';
+        updateText('top-tech-name', data.top_tecnico.name);
+        updateText('top-tech-email', data.top_tecnico.email || '');
+        updateText('top-tech-total', data.top_tecnico.total);
+      } else {
+        cont.style.display = 'none';
+        empty.style.display = '';
+      }
+    }
+    // Actualizar gráfico
+    updateSupervisorChart(data);
+  }
+  
+  function renderJefe(data){
+    // Recalcular KPIs a partir del payload filtrado
+    try {
+      var total = 0, completos = 0, enProgreso = 0;
+      (data.by_status || []).forEach(function(s){
+        total += (s.total || 0);
+        if (s.code === 'COMPLETED' || s.status === 'Completado') completos += (s.total || 0);
+        if (s.code === 'IN_PROGRESS' || s.status === 'En Progreso') enProgreso += (s.total || 0);
+      });
+      updateText('kpi-total-tickets', total);
+      updateText('kpi-completados', completos);
+      updateText('kpi-en-progreso', enProgreso);
+    } catch(e) { console.warn('No se pudieron recalcular KPIs', e); }
+
+    // Renderizar datos por estado
+    renderJefeStatusBreakdown(data.by_status || []);
+    
+    // Habilitar/Deshabilitar vista según selección de oficina
+    var officeIdSelect = document.getElementById('office-filter');
+    var officeSelected = officeIdSelect && officeIdSelect.value && officeIdSelect.value !== 'all';
+    var viewTech = document.getElementById('view-technicians');
+    var viewSup = document.getElementById('view-supervisors');
+    var viewOff = document.getElementById('view-offices');
+    if (viewTech && viewSup && viewOff){
+      viewTech.disabled = !officeSelected; // técnicos siguen dependiendo de oficina
+      // supervisores SIEMPRE disponibles (globales)
+      if (!officeSelected && viewOff.checked === false && viewTech.checked) {
+        viewOff.checked = true;
+      }
+    }
+
+    // Renderizar según vista seleccionada
+    var selectedView = getSelectedBreakdownView();
+    if (selectedView === 'technicians' && data.by_technician && data.by_technician.length){
+      renderJefeTechnicianBreakdown(data.by_technician);
+    } else if (selectedView === 'supervisors' && data.by_supervisor && data.by_supervisor.length){
+      renderJefeSupervisorBreakdown(data.by_supervisor);
+    } else {
+      renderJefeOfficeBreakdown(data.by_office || []);
+    }
+    
+    // Actualizar información de filtros
+    updateFilterInfo(data.filter_info || {});
+    // Actualizar gráfico de estados
+    updateJefeChart(data);
+    // Actualizar gráfico de oficinas/técnicos
+    updateJefeOfficeChart(data);
+    // Actualizar gráfico dedicado de supervisores (si existe el canvas)
+    try { updateJefeSupervisorsChart(data); } catch (e) { console.warn('No se pudo actualizar gráfico de supervisores', e); }
+  }
+  
+  // Función para inicializar/actualizar el gráfico de oficinas del jefe
+  function updateJefeOfficeChart(data) {
+    // Selección explícita de vista
+    var selectedView = getSelectedBreakdownView();
+    var hasTech = !!(data && data.by_technician && data.by_technician.length);
+    var hasSup = !!(data && data.by_supervisor && data.by_supervisor.length);
+    var sourceData;
+    if (selectedView === 'technicians' && hasTech) {
+      sourceData = data.by_technician;
+    } else if (selectedView === 'supervisors' && hasSup) {
+      sourceData = data.by_supervisor;
+    } else {
+      sourceData = data.by_office || [];
+    }
+    var labels = [];
+    var values = [];
+  var datasetLabel = 'Requerimientos por oficina';
+  if (selectedView === 'technicians' && hasTech) datasetLabel = 'Requerimientos por técnico';
+  else if (selectedView === 'supervisors' && hasSup) datasetLabel = 'Requerimientos por supervisor';
+
+    if (!sourceData || sourceData.length === 0) {
+      console.log("No hay datos para el gráfico de oficinas/técnicos del jefe");
+      return;
+    }
+
+    if (selectedView === 'technicians' && hasTech) {
+      labels = sourceData.map(function(item) { return item.name || ('Tecn. #' + (item.technician_id || '')); });
+      values = sourceData.map(function(item) { return item.total; });
+    } else if (selectedView === 'supervisors' && hasSup) {
+      labels = sourceData.map(function(item) { return item.name || ('Supervisor #' + (item.supervisor_id || '')); });
+      values = sourceData.map(function(item) { return item.total; });
+    } else {
+      labels = sourceData.map(function(item) { 
+        return item.office || item.assigned_office__name || 'Sin oficina'; 
+      });
+      values = sourceData.map(function(item) { return item.total; });
+    }
+    
+    var totalValues = values.reduce(function(sum, val) { return sum + val; }, 0);
+    if (totalValues === 0) {
+      console.log("Todos los valores de oficina son 0");
+      return;
+    }
+    
+    // Generar colores dinámicamente
+    var colors = labels.map(function(label, index) {
+      var hue = (index * 360 / labels.length) % 360;
+      return 'hsl(' + hue + ', 70%, 50%)';
+    });
+    
+    var canvas = document.getElementById('jefeOfficeChart');
+    if (!canvas) {
+      console.error("Canvas jefeOfficeChart no encontrado");
+      return;
+    }
+    // Reutilizar gráfico existente si fue creado por otro bloque
+    try {
+      var existing = Chart.getChart(canvas);
+      if (existing && !jefeOfficeChart) {
+        jefeOfficeChart = existing;
+      }
+    } catch (e) {}
+
+    if (jefeOfficeChart) {
+      jefeOfficeChart.data.labels = labels;
+      jefeOfficeChart.data.datasets[0].label = datasetLabel;
+      jefeOfficeChart.data.datasets[0].data = values;
+      jefeOfficeChart.data.datasets[0].backgroundColor = colors;
+      jefeOfficeChart.update();
+      return;
+    }
+
+    jefeOfficeChart = new Chart(canvas.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: datasetLabel,
+          data: values,
+          backgroundColor: colors,
+          borderColor: colors.map(function(color) {
+            return color.replace('50%', '40%'); // Bordes más oscuros
+          }),
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: false
+          },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                var total = context.dataset.data.reduce((a, b) => a + b, 0);
+                var percentage = Math.round((context.raw / total) * 100);
+                return context.label + ': ' + context.raw + ' (' + percentage + '%)';
+              }
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              precision: 0
+            }
+          },
+          x: {
+            ticks: {
+              maxRotation: 45,
+              minRotation: 0
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // Gráfico dedicado: Distribución por Supervisor (Jefe)
+  function updateJefeSupervisorsChart(data) {
+    var canvas = document.getElementById('jefeSupervisorChart');
+    if (!canvas) return; // El card puede no existir en algunos roles
+    var empty = document.getElementById('jefe-supervisor-empty');
+    var src = (data && data.by_supervisor) ? data.by_supervisor : [];
+    if (!src || src.length === 0) {
+      if (empty) empty.style.display = '';
+      if (jefeSupervisorChart) { jefeSupervisorChart.destroy(); jefeSupervisorChart = null; }
+      return;
+    }
+    if (empty) empty.style.display = 'none';
+    var labels = src.map(function(i){ return i.name || ('Supervisor #' + (i.supervisor_id || '')); });
+    var values = src.map(function(i){ return i.total || 0; });
+    var total = values.reduce(function(a,b){ return a+b; }, 0);
+    if (total === 0) {
+      if (empty) empty.style.display = '';
+      if (jefeSupervisorChart) { jefeSupervisorChart.destroy(); jefeSupervisorChart = null; }
+      return;
+    }
+    // colores dinámicos
+    var colorsArr = labels.map(function(_, idx){
+      var hue = (idx * 360 / Math.max(labels.length,1)) % 360;
+      return 'hsl(' + hue + ', 70%, 55%)';
+    });
+    // Reutilizar instancia si existe
+    try {
+      var existing = Chart.getChart(canvas);
+      if (existing && !jefeSupervisorChart) jefeSupervisorChart = existing;
+    } catch (e) {}
+    if (jefeSupervisorChart) {
+      jefeSupervisorChart.data.labels = labels;
+      jefeSupervisorChart.data.datasets[0].data = values;
+      jefeSupervisorChart.data.datasets[0].backgroundColor = colorsArr;
+      jefeSupervisorChart.update();
+      return;
+    }
+    jefeSupervisorChart = new Chart(canvas.getContext('2d'), {
+      type: 'doughnut',
+      data: {
+        labels: labels,
+        datasets: [{
+          data: values,
+          backgroundColor: colorsArr,
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom' },
+          tooltip: {
+            callbacks: {
+              label: function(ctx){
+                var v = ctx.raw || 0; var tot = ctx.dataset.data.reduce((a,b)=>a+b,0) || 1;
+                var p = Math.round((v/tot)*100);
+                return (ctx.label || '') + ': ' + v + ' (' + p + '%)';
+              }
+            }
+          }
+        },
+        cutout: '60%'
+      }
+    });
+  }
+
+  // Obtener vista seleccionada
+  function getSelectedBreakdownView(){
+    var checked = document.querySelector('input[name="breakdown-view"]:checked');
+    return checked ? checked.value : 'offices';
+  }
+  
+  // Función específica para renderizar el breakdown de estados del jefe
+  function renderJefeStatusBreakdown(statusData) {
+    var container = document.getElementById('jefe-status-breakdown');
+    if (!container) return;
+    
+    if (!statusData || statusData.length === 0) {
+      container.innerHTML = '<div class="text-muted text-center py-3">Sin datos de estados</div>';
+      return;
+    }
+    
+    var html = statusData.map(function(item) {
+      var statusCode = item.code || '';
+      var iconClass = '';
+      var colorClass = '';
+      
+      switch(statusCode) {
+        case 'DRAFT':
+          iconClass = 'bg-secondary';
+          colorClass = 'text-secondary';
+          break;
+        case 'ASSIGNED':
+          iconClass = 'bg-primary';
+          colorClass = 'text-primary';
+          break;
+        case 'IN_PROGRESS':
+          iconClass = 'bg-warning';
+          colorClass = 'text-warning';
+          break;
+        case 'PENDING_SUPPLIES':
+          iconClass = 'bg-info';
+          colorClass = 'text-info';
+          break;
+        case 'COMPLETED':
+          iconClass = 'bg-success';
+          colorClass = 'text-success';
+          break;
+        default:
+          iconClass = 'bg-secondary';
+          colorClass = 'text-secondary';
+      }
+      
+      return '<div class="d-flex align-items-center justify-content-between py-2 border-bottom">' +
+               '<div class="d-flex align-items-center">' +
+                 '<div class="status-dot ' + iconClass + ' me-2"></div>' +
+                 '<span class="fw-medium ' + colorClass + '">' + item.status + '</span>' +
+               '</div>' +
+               '<span class="badge bg-light text-dark fw-bold">' + item.total + '</span>' +
+             '</div>';
+    }).join('');
+    
+    container.innerHTML = html;
+  }
+  
+  // Función específica para renderizar el breakdown de oficinas del jefe
+  function renderJefeOfficeBreakdown(officeData) {
+    var container = document.getElementById('jefe-office-breakdown');
+    if (!container) return;
+    
+    if (!officeData || officeData.length === 0) {
+      container.innerHTML = '<div class="text-muted text-center py-3">Sin datos por oficina</div>';
+      return;
+    }
+    
+    // Actualizar título del gráfico/lista
+    var titleEl = document.getElementById('office-chart-title-text');
+    if (titleEl) titleEl.textContent = 'Distribución por Oficina';
+
+    // Calcular el máximo para las barras de progreso
+    var maxTotal = Math.max.apply(Math, officeData.map(function(o) { return o.total; }));
+    
+    var html = officeData.map(function(item) {
+      var officeName = item.office || item.assigned_office__name || 'Sin oficina asignada';
+      var percentage = maxTotal > 0 ? Math.round((item.total / maxTotal) * 100) : 0;
+      
+      return '<div class="mb-3">' +
+               '<div class="d-flex justify-content-between align-items-center mb-1">' +
+                 '<span class="fw-medium">' +
+                   '<i class="bi bi-geo-alt-fill text-primary me-2"></i>' +
+                   officeName +
+                 '</span>' +
+                 '<span class="badge bg-primary">' + item.total + '</span>' +
+               '</div>' +
+               '<div class="progress-modern">' +
+                 '<div class="progress-bar bg-primary" ' +
+                      'role="progressbar" ' +
+                      'style="width: ' + percentage + '%" ' +
+                      'aria-valuenow="' + item.total + '" ' +
+                      'aria-valuemin="0" ' +
+                      'aria-valuemax="' + maxTotal + '">' +
+                 '</div>' +
+               '</div>' +
+             '</div>';
+    }).join('');
+    
+    container.innerHTML = html;
+  }
+
+  // Función para renderizar breakdown por técnico cuando hay filtro de oficina
+  function renderJefeTechnicianBreakdown(techData) {
+    var container = document.getElementById('jefe-office-breakdown');
+    if (!container) return;
+    
+    if (!techData || techData.length === 0) {
+      container.innerHTML = '<div class="text-muted text-center py-3">Sin datos por técnico</div>';
+      return;
+    }
+    
+    // Actualizar título del gráfico/lista
+    var titleEl = document.getElementById('office-chart-title-text');
+    if (titleEl) titleEl.textContent = 'Requerimientos por Técnico';
+
+    // Calcular el máximo para las barras de progreso
+    var maxTotal = Math.max.apply(Math, techData.map(function(o) { return o.total; }));
+    
+    var html = techData.map(function(item) {
+      var name = item.name || ('Tecn. #' + (item.technician_id || ''));
+      var percentage = maxTotal > 0 ? Math.round((item.total / maxTotal) * 100) : 0;
+      
+      return '<div class="mb-3">' +
+               '<div class="d-flex justify-content-between align-items-center mb-1">' +
+                 '<span class="fw-medium">' +
+                   '<i class="bi bi-person-badge-fill text-primary me-2"></i>' +
+                   name +
+                 '</span>' +
+                 '<span class="badge bg-primary">' + item.total + '</span>' +
+               '</div>' +
+               '<div class="progress-modern">' +
+                 '<div class="progress-bar bg-primary" ' +
+                      'role="progressbar" ' +
+                      'style="width: ' + percentage + '%" ' +
+                      'aria-valuenow="' + item.total + '" ' +
+                      'aria-valuemin="0" ' +
+                      'aria-valuemax="' + maxTotal + '">' +
+                 '</div>' +
+               '</div>' +
+             '</div>';
+    }).join('');
+    
+    container.innerHTML = html;
+  }
+
+  // Función para renderizar breakdown por supervisor (si está disponible)
+  function renderJefeSupervisorBreakdown(superData) {
+    var container = document.getElementById('jefe-office-breakdown');
+    if (!container) return;
+    
+    if (!superData || superData.length === 0) {
+      container.innerHTML = '<div class="text-muted text-center py-3">Sin datos por supervisor</div>';
+      return;
+    }
+    
+    // Actualizar título del gráfico/lista
+    var titleEl = document.getElementById('office-chart-title-text');
+    if (titleEl) titleEl.textContent = 'Requerimientos por Supervisor';
+
+    // Calcular el máximo para las barras de progreso
+    var maxTotal = Math.max.apply(Math, superData.map(function(o) { return o.total; }));
+    
+    var html = superData.map(function(item) {
+      var name = item.name || ('Supervisor #' + (item.supervisor_id || ''));
+      var percentage = maxTotal > 0 ? Math.round((item.total / maxTotal) * 100) : 0;
+      
+      return '<div class="mb-3">' +
+               '<div class="d-flex justify-content-between align-items-center mb-1">' +
+                 '<span class="fw-medium">' +
+                   '<i class="bi bi-person-fill-gear text-primary me-2"></i>' +
+                   name +
+                 '</span>' +
+                 '<span class="badge bg-primary">' + item.total + '</span>' +
+               '</div>' +
+               '<div class="progress-modern">' +
+                 '<div class="progress-bar bg-primary" ' +
+                      'role="progressbar" ' +
+                      'style="width: ' + percentage + '%" ' +
+                      'aria-valuenow="' + item.total + '" ' +
+                      'aria-valuemin="0" ' +
+                      'aria-valuemax="' + maxTotal + '">' +
+                 '</div>' +
+               '</div>' +
+             '</div>';
+    }).join('');
+    
+    container.innerHTML = html;
+  }
+
+  // Función para actualizar la información de filtros
+  function updateFilterInfo(filterInfo) {
+    var filterInfoDiv = document.getElementById('filter-info');
+    var filterDescription = document.getElementById('filter-description');
+    
+    if (!filterInfoDiv || !filterDescription) return;
+    
+    var hasFilters = filterInfo.office_name || filterInfo.technician_name;
+    
+    if (hasFilters) {
+      var description = 'Mostrando datos';
+      if (filterInfo.office_name) {
+        description += ' de la oficina: ' + filterInfo.office_name;
+      }
+      if (filterInfo.technician_name) {
+        if (filterInfo.office_name) description += ' y';
+        description += ' del técnico: ' + filterInfo.technician_name;
+      }
+      
+      filterDescription.textContent = description;
+      filterInfoDiv.style.display = 'block';
+    } else {
+      filterInfoDiv.style.display = 'none';
+    }
+  }
+
+  // Función para obtener datos con filtros
+  function fetchJefeDataWithFilters() {
+    var officeId = document.getElementById('office-filter')?.value || 'all';
+    var technicianId = document.getElementById('technician-filter')?.value || 'all';
+    
+  var params = new URLSearchParams();
+  if (officeId !== 'all') params.append('office_id', officeId);
+  if (technicianId !== 'all') params.append('technician_id', technicianId);
+  var startInput = document.getElementById('date-start');
+  var endInput = document.getElementById('date-end');
+  if (startInput && startInput.value) params.append('start', startInput.value);
+  if (endInput && endInput.value) params.append('end', endInput.value);
+  // Estados seleccionados
+  var statusBoxes = document.querySelectorAll('#status-checkboxes input[type="checkbox"]:checked');
+  statusBoxes.forEach(function(cb){ params.append('status', cb.value); });
+  // Vista de desglose
+  var view = getSelectedBreakdownView();
+  if (view) params.append('view', view);
+    
+    var url = '/estadisticas/data/';
+    if (params.toString()) {
+      url += '?' + params.toString();
+    }
+    
+    console.log("Obteniendo datos de jefe con URL:", url);
+    
+    // Sincronizar URL del navegador con los filtros
+    try {
+      var newUrl = window.location.pathname + (params.toString() ? ('?' + params.toString()) : '');
+      window.history.replaceState({}, '', newUrl);
+    } catch (e) {}
+
+    fetch(url)
+      .then(function(r){ return r.json(); })
+      .then(function(data){ 
+        console.log("Datos con filtros cargados:", data);
+        renderJefe(data);
+        // habilitar export si hay datos
+        var exportBtn = document.getElementById('export-csv');
+        if (exportBtn) exportBtn.disabled = !(data && (data.by_status && data.by_status.length));
+        updateFiltersBadge();
+      })
+      .catch(function(err){ console.error("Error cargando datos con filtros:", err); });
+  }
+  function countActiveFilters(){
+    var count = 0;
+    var officeVal = document.getElementById('office-filter')?.value;
+    var techVal = document.getElementById('technician-filter')?.value;
+    var startVal = document.getElementById('date-start')?.value;
+    var endVal = document.getElementById('date-end')?.value;
+    var statusCount = document.querySelectorAll('#status-checkboxes input[type="checkbox"]:checked').length;
+    if (officeVal && officeVal !== 'all') count++;
+    if (techVal && techVal !== 'all') count++;
+    if (startVal) count++;
+    if (endVal) count++;
+    if (statusCount > 0) count++;
+    return {count: count, statuses: statusCount};
+  }
+  function updateFiltersBadge(){
+    var info = countActiveFilters();
+    var el = document.getElementById('filters-count');
+    if (el) el.textContent = info.count;
+  }
+  // Exportar CSV simple del estado actual (by_status y breakdown mostrado)
+  function exportCurrentCSV(){
+    // recolectar datos de by_status desde el DOM breakdown
+    var rows = [];
+    rows.push(['Categoria','Etiqueta','Total']);
+    // Estados
+    var statusItems = document.querySelectorAll('#jefe-status-breakdown .d-flex.align-items-center.justify-content-between');
+    statusItems.forEach(function(item){
+      var label = item.querySelector('.fw-medium')?.textContent?.trim() || '';
+      var total = item.querySelector('.badge')?.textContent?.trim() || '0';
+      rows.push(['Estado', label, total]);
+    });
+    // Breakdown de la derecha (oficina/tecnico/supervisor)
+    var rightItems = document.querySelectorAll('#jefe-office-breakdown .mb-3');
+    rightItems.forEach(function(block){
+      var label = block.querySelector('.fw-medium')?.innerText?.replace(/\s+/g,' ').trim() || '';
+      var total = block.querySelector('.badge')?.textContent?.trim() || '0';
+      // Detectar categoría por el icono
+      var icon = block.querySelector('i')?.className || '';
+      var cat = 'Oficina';
+      if (icon.includes('person-badge')) cat = 'Técnico';
+      else if (icon.includes('person-fill-gear')) cat = 'Supervisor';
+      rows.push([cat, label, total]);
+    });
+
+    var csv = rows.map(function(r){
+      return r.map(function(field){
+        var f = String(field).replaceAll('"','""');
+        return '"' + f + '"';
+      }).join(',');
+    }).join('\r\n');
+
+    var blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'estadisticas.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+  // Helper para leer parámetros de URL y aplicar a filtros
+  function applyFiltersFromURL(){
+    var params = new URLSearchParams(window.location.search);
+    var officeParam = params.get('office_id') || 'all';
+    var techParam = params.get('technician_id') || 'all';
+    var startParam = params.get('start') || '';
+    var endParam = params.get('end') || '';
+    var statuses = params.getAll('status');
+  var viewParam = params.get('view') || 'offices';
+
+    var officeFilter = document.getElementById('office-filter');
+    var technicianFilter = document.getElementById('technician-filter');
+    var startInput = document.getElementById('date-start');
+    var endInput = document.getElementById('date-end');
+
+    if (startInput) startInput.value = startParam;
+    if (endInput) endInput.value = endParam;
+
+    // Estados
+    if (statuses && statuses.length){
+      statuses.forEach(function(code){
+        var el = document.getElementById('status-' + code);
+        if (el) el.checked = true;
+      });
+    }
+
+    if (officeFilter){
+      officeFilter.value = officeParam;
+      // cargar técnicos si hay oficina específica y luego seleccionar técnico
+      if (officeParam !== 'all'){
+        updateTechniciansList(officeParam).then(function(){
+          if (technicianFilter && techParam){ technicianFilter.value = techParam; }
+          // habilitar vistas y aplicar la de URL
+          var vOff = document.getElementById('view-offices');
+          var vTec = document.getElementById('view-technicians');
+          var vSup = document.getElementById('view-supervisors');
+          if (vTec) vTec.disabled = false;
+          if (viewParam === 'technicians' && vTec) vTec.checked = true;
+          else if (viewParam === 'supervisors' && vSup) vSup.checked = true;
+          else if (vOff) vOff.checked = true;
+        }).catch(function(){
+          // ignore
+        });
+      } else {
+        // reset technicians
+        updateTechniciansList('all');
+        // bloquear vistas y volver a oficinas
+        var vTec = document.getElementById('view-technicians');
+        var vSup = document.getElementById('view-supervisors');
+        var vOff = document.getElementById('view-offices');
+        if (vTec) { vTec.disabled = true; }
+        // Supervisores permanecen habilitados globalmente
+        if (viewParam === 'supervisors' && vSup) vSup.checked = true;
+        else if (vOff) { vOff.checked = true; }
+      }
+    }
+  }
+  
+  function renderTecnico(data){
+    updateText('kpi-tec-asignados', data.asignados);
+    updateText('kpi-tec-completados', data.completados);
+    updateText('kpi-tec-pend-insumos', data.pendientes_insumos);
+    renderList('list-tec-por-estado', data.por_estado || [], 'status', 'total');
+    // Actualizar gráfico
+    updateTecnicoChart(data);
+  }
     function recalcSupervisor(payload){
       if (officeId && payload.assigned_office_id === officeId){
         fetch('/estadisticas/data/')
           .then(function(r){ return r.json(); })
           .then(function(data){ renderSupervisor(data); })
-          .catch(function(){});
+          .catch(function(err){ console.error("Error fetching supervisor data:", err); });
       }
     }
     function recalcJefe(){
-      fetch('/estadisticas/data/')
-        .then(function(r){ return r.json(); })
-        .then(function(data){ renderJefe(data); })
-        .catch(function(){});
+      // Si es jefe y hay filtros activos, usar la función con filtros
+      if (role === 'JEFE') {
+        fetchJefeDataWithFilters();
+      } else {
+        fetch('/estadisticas/data/')
+          .then(function(r){ return r.json(); })
+          .then(function(data){ renderJefe(data); })
+          .catch(function(err){ console.error("Error fetching jefe data:", err); });
+      }
     }
     function recalcTecnico(payload){
       if (techId && String(payload.technician_id) === String(techId)){
         fetch('/estadisticas/data/')
           .then(function(r){ return r.json(); })
           .then(function(data){ renderTecnico(data); })
-          .catch(function(){});
+          .catch(function(err){ console.error("Error fetching tecnico data:", err); });
       }
     }
-    // Fallback de seguridad: pequeño polling cada 20s sólo para Supervisor
+    
+    // Cargar datos iniciales al cargar la página
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log("DOM cargado, inicializando gráficos para rol: " + role);
+      
+      // Debug para canvas
+      var jefeCanvas = document.getElementById('jefeStatusChart');
+      var supervisorCanvas = document.getElementById('supervisorStatusChart');
+      var tecnicoCanvas = document.getElementById('tecnicoStatusChart');
+      
+      console.log("Canvas disponibles:", {
+        'jefeCanvas': jefeCanvas ? 'Encontrado' : 'No encontrado',
+        'supervisorCanvas': supervisorCanvas ? 'Encontrado' : 'No encontrado',
+        'tecnicoCanvas': tecnicoCanvas ? 'Encontrado' : 'No encontrado'
+      });
+      
+      // Verificar que Chart.js está disponible
+      if (typeof Chart === 'undefined') {
+        console.error("Chart.js no está cargado!");
+        return;
+      } else {
+        console.log("Chart.js está disponible, versión:", Chart.version);
+      }
+      
+      // Configurar listeners de filtros del jefe inmediatamente para que funcionen aunque falle la primera carga
+      if (role === 'JEFE') {
+        try { setupJefeFilters(); } catch (e) { console.warn('No se pudo configurar filtros inicialmente:', e); }
+      }
+
+      // Restaurar filtros desde URL antes de la primera carga
+      if (role === 'JEFE') {
+        try { applyFiltersFromURL(); } catch (e) { console.warn('No se pudieron aplicar filtros de URL', e); }
+      }
+      fetch('/estadisticas/data/')
+        .then(function(r){ return r.json(); })
+        .then(function(data){ 
+          console.log("Datos iniciales cargados:", data);
+          if (role === 'JEFE') {
+            console.log("Renderizando datos de jefe");
+            renderJefe(data);
+            
+            // Reasegurar event listeners (idempotente)
+            setupJefeFilters();
+            // Si hay filtros en URL, aplicar búsqueda con filtros inmediatamente
+            if (window.location.search && window.location.search.length > 1){
+              fetchJefeDataWithFilters();
+            }
+            updateFiltersBadge();
+          } else if (role === 'SUPERVISOR') {
+            console.log("Renderizando datos de supervisor:", data.por_estado);
+            renderSupervisor(data);
+          } else if (role === 'TECNICO') {
+            console.log("Renderizando datos de técnico:", data.por_estado);
+            renderTecnico(data);
+          }
+        })
+        .catch(function(err){ console.error("Error cargando datos iniciales:", err); });
+    });
+        
+    // Función para configurar filtros del jefe
+    function setupJefeFilters() {
+      var applyButton = document.getElementById('apply-filters');
+      var resetButton = document.getElementById('reset-filters');
+      var officeFilter = document.getElementById('office-filter');
+      var technicianFilter = document.getElementById('technician-filter');
+      
+      if (applyButton) {
+        applyButton.addEventListener('click', function() {
+          console.log("Aplicando filtros");
+          fetchJefeDataWithFilters();
+        });
+      }
+      
+      if (resetButton) {
+        resetButton.addEventListener('click', function() {
+          console.log("Restableciendo filtros");
+          if (officeFilter) officeFilter.value = 'all';
+          // Resetear y deshabilitar dropdown de técnicos
+          if (technicianFilter) {
+            technicianFilter.innerHTML = '<option value="all">Selecciona una oficina primero</option>';
+            technicianFilter.disabled = true;
+            technicianFilter.value = 'all';
+          }
+          var startInput = document.getElementById('date-start');
+          var endInput = document.getElementById('date-end');
+          if (startInput) startInput.value = '';
+          if (endInput) endInput.value = '';
+          document.querySelectorAll('#status-checkboxes input[type="checkbox"]').forEach(function(cb){ cb.checked = false; });
+          fetchJefeDataWithFilters();
+          updateFiltersBadge();
+        });
+      }
+      var exportBtn = document.getElementById('export-csv');
+      if (exportBtn) {
+        exportBtn.addEventListener('click', function(){ exportCurrentCSV(); });
+      }
+      // Listeners para actualizar la insignia de filtros activos
+      ;['change','input'].forEach(function(evt){
+        [officeFilter, technicianFilter, document.getElementById('date-start'), document.getElementById('date-end')]
+          .forEach(function(el){ if (el) el.addEventListener(evt, updateFiltersBadge); });
+      });
+      document.querySelectorAll('#status-checkboxes input[type="checkbox"]').forEach(function(cb){
+        cb.addEventListener('change', updateFiltersBadge);
+      });
+      var clearStatuses = document.getElementById('clear-statuses');
+      if (clearStatuses){
+        clearStatuses.addEventListener('click', function(e){
+          e.preventDefault();
+          document.querySelectorAll('#status-checkboxes input[type="checkbox"]').forEach(function(cb){ cb.checked = false; });
+          updateFiltersBadge();
+        });
+      }
+      
+      // Filtro automático al cambiar oficina (actualizar técnicos disponibles y recargar estadísticas)
+      if (officeFilter) {
+        officeFilter.addEventListener('change', function() {
+          var selectedOfficeId = this.value;
+          console.log("Oficina cambiada a:", selectedOfficeId);
+          // Resetear selección de técnico al cambiar de oficina
+          if (technicianFilter) {
+            technicianFilter.value = 'all';
+          }
+          // Actualizar lista de técnicos según la oficina
+          updateTechniciansList(selectedOfficeId);
+          // Refrescar estadísticas inmediatamente con el nuevo filtro de oficina
+          fetchJefeDataWithFilters();
+        });
+      }
+
+      // Al cambiar el técnico, recargar estadísticas
+      if (technicianFilter) {
+        technicianFilter.addEventListener('change', function() {
+          console.log("Técnico cambiado a:", this.value);
+          fetchJefeDataWithFilters();
+        });
+      }
+      // Cambiar vista de desglose
+      document.querySelectorAll('input[name="breakdown-view"]').forEach(function(rb){
+        rb.addEventListener('change', function(){
+          // Solo restringir técnicos cuando no hay oficina
+          var officeId = document.getElementById('office-filter')?.value || 'all';
+          if (officeId === 'all' && this.value === 'technicians'){
+            document.getElementById('view-offices').checked = true;
+            return;
+          }
+          fetchJefeDataWithFilters();
+        });
+      });
+    }
+    
+    // Función para actualizar la lista de técnicos según la oficina seleccionada
+    function updateTechniciansList(officeId) {
+      var technicianFilter = document.getElementById('technician-filter');
+      if (!technicianFilter) return Promise.resolve();
+      
+      // Si no hay oficina seleccionada o es "all", deshabilitar y limpiar técnicos
+      if (!officeId || officeId === 'all') {
+        technicianFilter.innerHTML = '<option value="all">Selecciona una oficina primero</option>';
+        technicianFilter.disabled = true;
+        technicianFilter.value = 'all';
+        return Promise.resolve();
+      }
+      
+      // Mostrar un estado de carga
+      technicianFilter.innerHTML = '<option value="all">Cargando técnicos...</option>';
+      technicianFilter.disabled = true;
+      
+      var url = '/estadisticas/technicians/?office_id=' + encodeURIComponent(officeId);
+      
+      return fetch(url)
+        .then(function(response) {
+          if (!response.ok) {
+            throw new Error('Error al cargar técnicos');
+          }
+          return response.json();
+        })
+        .then(function(data) {
+          // Limpiar opciones existentes
+          technicianFilter.innerHTML = '<option value="all">Todos los técnicos de esta oficina</option>';
+          
+          // Agregar técnicos de la oficina seleccionada
+          if (data.technicians && data.technicians.length > 0) {
+            data.technicians.forEach(function(tech) {
+              var option = document.createElement('option');
+              option.value = tech.id;
+              option.textContent = tech.name; // Solo el nombre, ya no necesitamos mostrar la oficina
+              technicianFilter.appendChild(option);
+            });
+            technicianFilter.disabled = false;
+            console.log('Lista de técnicos actualizada:', data.technicians.length, 'técnicos encontrados para la oficina');
+          } else {
+            technicianFilter.innerHTML = '<option value="all">No hay técnicos en esta oficina</option>';
+            technicianFilter.disabled = true;
+          }
+        })
+        .catch(function(error) {
+          console.error('Error al actualizar técnicos:', error);
+          technicianFilter.innerHTML = '<option value="all">Error al cargar técnicos</option>';
+          technicianFilter.disabled = true;
+          throw error;
+        });
+    }
+    
+    // Fallback de seguridad: pequeño polling cada 20s
     if (role === 'SUPERVISOR'){
       setInterval(function(){
         fetch('/estadisticas/data/')
           .then(function(r){ return r.json(); })
           .then(function(data){ renderSupervisor(data); })
-          .catch(function(){});
+          .catch(function(err){ console.error("Error en polling supervisor:", err); });
       }, 20000);
     } else if (role === 'JEFE'){
       setInterval(function(){
-        fetch('/estadisticas/data/')
-          .then(function(r){ return r.json(); })
-          .then(function(data){ renderJefe(data); })
-          .catch(function(){});
+        // Respetar filtros activos al hacer polling
+        try {
+          fetchJefeDataWithFilters();
+        } catch (e) {
+          console.warn('Fallo polling con filtros, intentando sin filtros', e);
+          fetch('/estadisticas/data/')
+            .then(function(r){ return r.json(); })
+            .then(function(data){ renderJefe(data); })
+            .catch(function(err){ console.error("Error en polling jefe:", err); });
+        }
       }, 25000);
     } else if (role === 'TECNICO'){
       setInterval(function(){
         fetch('/estadisticas/data/')
           .then(function(r){ return r.json(); })
           .then(function(data){ renderTecnico(data); })
-          .catch(function(){});
+          .catch(function(err){ console.error("Error en polling tecnico:", err); });
       }, 30000);
     }
     

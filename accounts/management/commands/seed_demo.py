@@ -6,18 +6,53 @@ from tickets.models import Ticket, TicketPriority, TicketStatus, TicketNote, Evi
 from accounts.models import Notification
 from io import BytesIO
 from PIL import Image
+import random
+from datetime import timedelta
+from django.utils import timezone
+from django.core.management import call_command
+from django.db import utils as db_utils
 
 class Command(BaseCommand):
-    help = "Create demo data: offices, users (Jefe, Supervisores, Técnicos) and tickets"
+    help = "Create demo data: offices, users (Jefe, Supervisores, Técnicos) and many tickets"
+
+    def add_arguments(self, parser):
+        parser.add_argument('--tickets', type=int, default=200, help='Total tickets to ensure in DB (default: 200)')
+        parser.add_argument('--months', type=int, default=6, help='Distribute tickets across last N months (default: 6)')
+        parser.add_argument('--tech-per-office', type=int, default=6, help='Technicians to create per office (minimum baseline will be kept)')
+        parser.add_argument('--no-evidence', action='store_true', help='Skip generating evidence images')
+        parser.add_argument('--reset', action='store_true', help='Delete existing demo tickets and notes/evidence before seeding')
 
     def handle(self, *args, **options):
         User = get_user_model()
+        total_tickets_target = max(1, options['tickets'])
+        months = max(1, options['months'])
+        tech_per_office_target = max(1, options['tech_per_office'])
+        skip_evidence = options['no_evidence']
+        do_reset = options['reset']
+
+        # Ensure DB schema is up-to-date
+        try:
+            call_command('migrate', interactive=False, verbosity=0)
+        except Exception:
+            pass
+
+        if do_reset:
+            # Danger zone: only delete Ticket-related demo entities
+            self.stdout.write(self.style.WARNING('Resetting demo tickets, notes and evidences...'))
+            for qs in (Evidence.objects, TicketNote.objects, Ticket.objects):
+                try:
+                    qs.all().delete()
+                except (db_utils.OperationalError, db_utils.ProgrammingError, Exception):
+                    # Tables may not exist yet; ignore
+                    pass
 
         # Offices
         bogota, _ = Office.objects.get_or_create(name="Bogotá", defaults={"description": "Sede principal"})
         medellin, _ = Office.objects.get_or_create(name="Medellín", defaults={"description": "Sede regional"})
         cali, _ = Office.objects.get_or_create(name="Cali", defaults={"description": "Sede suroccidente"})
         barranquilla, _ = Office.objects.get_or_create(name="Barranquilla", defaults={"description": "Sede costa"})
+        cartagena, _ = Office.objects.get_or_create(name="Cartagena", defaults={"description": "Sede Caribe"})
+        bucaramanga, _ = Office.objects.get_or_create(name="Bucaramanga", defaults={"description": "Sede nororiente"})
 
         # Jefe
         jefe, created = User.objects.get_or_create(username="jefe", defaults={"email": "jefe@example.com"})
@@ -69,6 +104,59 @@ class Command(BaseCommand):
         sup_med.save()
         medellin.supervisor = sup_med
         medellin.save()
+
+        # Supervisores adicionales
+        sup_cali, created = User.objects.get_or_create(username="sup_cali", defaults={"email": "sup_cali@example.com"})
+        if created:
+            sup_cali.set_password("demo1234")
+        sup_cali.role = Roles.SUPERVISOR
+        sup_cali.office = cali
+        sup_cali.approved = True
+        sup_cali.is_active = True
+        sup_cali.first_name = "Carla"
+        sup_cali.last_name = "Zapata"
+        sup_cali.save()
+        cali.supervisor = sup_cali
+        cali.save()
+
+        sup_baq, created = User.objects.get_or_create(username="sup_baq", defaults={"email": "sup_baq@example.com"})
+        if created:
+            sup_baq.set_password("demo1234")
+        sup_baq.role = Roles.SUPERVISOR
+        sup_baq.office = barranquilla
+        sup_baq.approved = True
+        sup_baq.is_active = True
+        sup_baq.first_name = "Diego"
+        sup_baq.last_name = "Cano"
+        sup_baq.save()
+        barranquilla.supervisor = sup_baq
+        barranquilla.save()
+
+        sup_car, created = User.objects.get_or_create(username="sup_car", defaults={"email": "sup_car@example.com"})
+        if created:
+            sup_car.set_password("demo1234")
+        sup_car.role = Roles.SUPERVISOR
+        sup_car.office = cartagena
+        sup_car.approved = True
+        sup_car.is_active = True
+        sup_car.first_name = "Valeria"
+        sup_car.last_name = "Pardo"
+        sup_car.save()
+        cartagena.supervisor = sup_car
+        cartagena.save()
+
+        sup_bga, created = User.objects.get_or_create(username="sup_bga", defaults={"email": "sup_bga@example.com"})
+        if created:
+            sup_bga.set_password("demo1234")
+        sup_bga.role = Roles.SUPERVISOR
+        sup_bga.office = bucaramanga
+        sup_bga.approved = True
+        sup_bga.is_active = True
+        sup_bga.first_name = "Julián"
+        sup_bga.last_name = "Mora"
+        sup_bga.save()
+        bucaramanga.supervisor = sup_bga
+        bucaramanga.save()
 
         # Técnicos
         tech1, created = User.objects.get_or_create(username="tecnico1", defaults={"email": "tecnico1@example.com"})
@@ -131,6 +219,24 @@ class Command(BaseCommand):
         tech4.phone = tech4.phone or "+57 300 000 0007"
         tech4.save()
 
+        # Crear más técnicos por oficina según objetivo
+        offices_for_tech = [bogota, medellin, cali, barranquilla, cartagena, bucaramanga]
+        for off in offices_for_tech:
+            existing = User.objects.filter(role=Roles.TECNICO, office=off).count()
+            to_add = max(0, tech_per_office_target - existing)
+            for i in range(to_add):
+                uname = f"tec_{off.name.lower()[0:3]}_{existing + i + 1}"
+                u, created = User.objects.get_or_create(username=uname, defaults={"email": f"{uname}@example.com"})
+                if created:
+                    u.set_password("demo1234")
+                u.role = Roles.TECNICO
+                u.office = off
+                u.first_name = f"Tec {off.name[:3]}"
+                u.last_name = f"#{existing + i + 1}"
+                u.approved = True
+                u.is_active = True
+                u.save()
+
         # Tickets
         base_tickets = [
                 # Bogotá
@@ -177,23 +283,11 @@ class Command(BaseCommand):
                     status=t["status"],
                 )
 
-        # Ensure at least 30 tickets by generating more demo items if needed
-        target = 30
+        # Ensure a larger number of tickets distributed over time
+        target = total_tickets_target
         current = Ticket.objects.count()
         if current < target:
-            offices = [bogota, medellin, cali, barranquilla]
-            office_sup = {
-                bogota.id: sup_bog,
-                medellin.id: sup_med,
-                cali.id: None,
-                barranquilla.id: None,
-            }
-            office_tech = {
-                bogota.id: tech1,
-                medellin.id: tech2,
-                cali.id: tech3,
-                barranquilla.id: tech4,
-            }
+            offices = [bogota, medellin, cali, barranquilla, cartagena, bucaramanga]
             statuses = [
                 TicketStatus.DRAFT,
                 TicketStatus.ASSIGNED,
@@ -209,13 +303,27 @@ class Command(BaseCommand):
                 TicketPriority.P5,
             ]
             n_to_add = target - current
+            # pool de técnicos por oficina
+            tech_pool = {
+                off.id: list(User.objects.filter(role=Roles.TECNICO, office=off))
+                for off in offices
+            }
+            sup_pool = {
+                off.id: getattr(off, 'supervisor', None)
+                for off in offices
+            }
+            now = timezone.now()
             for i in range(n_to_add):
-                office = offices[i % len(offices)]
-                status = statuses[i % len(statuses)]
-                prio = priorities[i % len(priorities)]
-                sup = office_sup.get(office.id)
-                tech = office_tech.get(office.id)
-                Ticket.objects.create(
+                office = random.choice(offices)
+                status = random.choice(statuses)
+                prio = random.choice(priorities)
+                sup = sup_pool.get(office.id)
+                techs = tech_pool.get(office.id) or []
+                tech = random.choice(techs) if techs else None
+                # Distribuir fecha de creación en los últimos N meses
+                delta_days = random.randint(0, months * 30)
+                created_at = now - timedelta(days=delta_days, hours=random.randint(0, 23), minutes=random.randint(0, 59))
+                tk = Ticket.objects.create(
                     requester_name=f"Demo{i:02}",
                     requester_office=office,
                     requester_office_text=office.name,
@@ -226,9 +334,11 @@ class Command(BaseCommand):
                     technician=tech if status != TicketStatus.DRAFT else None,
                     status=status,
                 )
+                # Sobrescribir timestamps si es posible (direct DB update)
+                Ticket.objects.filter(id=tk.id).update(created_at=created_at, updated_at=created_at)
 
-        # Add demo notes/evidences/notifications to a few tickets
-        some_tickets = list(Ticket.objects.order_by('-id')[:5])
+        # Add demo notes/evidences/notifications to a sample of recent tickets
+        some_tickets = list(Ticket.objects.order_by('-id')[:min(20, Ticket.objects.count())])
         for idx, tk in enumerate(some_tickets):
             # Note
             TicketNote.objects.get_or_create(
@@ -237,18 +347,19 @@ class Command(BaseCommand):
                 text=f"Nota de prueba {idx+1} para ticket {tk.id}",
             )
             # Evidence - generate a tiny image in-memory
-            try:
-                img = Image.new('RGB', (200, 120), color=(30 + idx * 20, 64, 175))
-                bio = BytesIO()
-                img.save(bio, format='PNG')
-                bio.seek(0)
-                # Use a deterministic name; ImageField needs a file-like with name
-                from django.core.files.base import ContentFile
-                content = ContentFile(bio.read(), name=f"demo_{tk.id}_{idx}.png")
-                if not tk.evidences.exists():
-                    Evidence.objects.create(ticket=tk, image=content)
-            except Exception:
-                pass
+            if not skip_evidence:
+                try:
+                    img = Image.new('RGB', (200, 120), color=(30 + (idx * 12) % 180, 64, 175))
+                    bio = BytesIO()
+                    img.save(bio, format='PNG')
+                    bio.seek(0)
+                    # Use a deterministic name; ImageField needs a file-like with name
+                    from django.core.files.base import ContentFile
+                    content = ContentFile(bio.read(), name=f"demo_{tk.id}_{idx}.png")
+                    if not tk.evidences.exists():
+                        Evidence.objects.create(ticket=tk, image=content)
+                except Exception:
+                    pass
             # Notification
             if tk.supervisor:
                 Notification.objects.get_or_create(

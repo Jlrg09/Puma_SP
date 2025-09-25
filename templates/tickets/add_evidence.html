@@ -1,14 +1,58 @@
 {% extends 'base.html' %}
 {% block title %}Agregar evidencia{% endblock %}
 {% block content %}
-<h1>Evidencia para requerimiento #{{ ticket.id }}</h1>
-<form method="post" enctype="multipart/form-data" class="col-12 col-md-6">
-  {% csrf_token %}
-  <div class="mb-3">
-    <label class="form-label">Imagen de evidencia</label>
-    <input type="file" name="image" class="form-control" required>
+
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb mb-0">
+    <li class="breadcrumb-item"><a class="text-decoration-none" href="/tickets/"><i class="bi bi-list-task me-1"></i>Requerimientos</a></li>
+    <li class="breadcrumb-item active" aria-current="page">#{{ ticket.id }}</li>
+  </ol>
+</nav>
+
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-7">
+    <div class="card">
+      <div class="card-header"><h5 class="mb-0"><i class="bi bi-camera me-2"></i>Agregar evidencia</h5></div>
+      <div class="card-body">
+        <form method="post" enctype="multipart/form-data" class="needs-validation" novalidate>
+          {% csrf_token %}
+          <div class="mb-3">
+            <label class="form-label">Imagen de evidencia</label>
+            <input type="file" name="image" id="evidenceInput" class="form-control" accept="image/*" required>
+            <div class="form-text">Formatos aceptados: JPG, PNG. Tamaño recomendado &lt; 5MB.</div>
+          </div>
+          <div id="previewWrap" class="mb-3 d-none">
+            <label class="form-label">Vista previa</label>
+            <div class="border rounded p-2 bg-light">
+              <img id="previewImg" class="img-fluid rounded" alt="Vista previa" />
+            </div>
+          </div>
+          <div class="d-flex justify-content-end gap-2">
+            <a class="btn btn-secondary" href="/tickets/"><i class="bi bi-x-circle me-1"></i>Cancelar</a>
+            <button class="btn btn-primary" type="submit"><i class="bi bi-upload me-1"></i>Subir</button>
+          </div>
+        </form>
+      </div>
+    </div>
   </div>
-  <button class="btn btn-primary">Subir</button>
-  <a class="btn btn-secondary" href="/tickets/">Cancelar</a>
-</form>
+</div>
+
+<script>
+  (function(){
+    var input = document.getElementById('evidenceInput');
+    var wrap = document.getElementById('previewWrap');
+    var img = document.getElementById('previewImg');
+    if (!input) return;
+    input.addEventListener('change', function(){
+      var file = input.files && input.files[0];
+      if (!file) { wrap && wrap.classList.add('d-none'); return; }
+      var reader = new FileReader();
+      reader.onload = function(e){
+        if (img) img.src = e.target.result;
+        wrap && wrap.classList.remove('d-none');
+      };
+      reader.readAsDataURL(file);
+    });
+  })();
+</script>
 {% endblock %}

@@ -4,16 +4,17 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Gestor de Servicios{% endblock %}</title>
+  <title>{% block title %}{{ BRAND_NAME }}{% endblock %}</title>
   <link rel="icon" href="{% static 'favicon.svg' %}" type="image/svg+xml">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+  {% block extra_head %}{% endblock %}
   <style>
     :root {
       --primary-blue: #1e40af;
       --primary-blue-light: #3b82f6;
       --primary-blue-dark: #1e3a8a;
-      --secondary-gray: #f8fafc;
+      --secondary-gray: #f3f4f6; /* page background */
       --secondary-gray-dark: #e2e8f0;
       --accent-blue: #0ea5e9;
       --text-primary: #1e293b;
@@ -27,7 +28,7 @@
       --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
     }
 
-    body {
+    html, body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
       background-color: var(--secondary-gray);
       color: var(--text-primary);
@@ -35,34 +36,176 @@
     }
 
     .navbar-custom {
-      background: linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-blue-light) 100%) !important;
-      border-bottom: 1px solid var(--border-color);
-      padding: 1rem 0;
-      box-shadow: var(--shadow-sm);
+      background: rgba(255, 255, 255, 0.95) !important;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(229, 231, 235, 0.8);
+      padding: .75rem 0;
+      box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: sticky;
+      top: 0;
+      z-index: 1030;
     }
 
+    .navbar-custom.scrolled {
+      background: rgba(255, 255, 255, 0.98) !important;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      padding: .5rem 0;
+    }
+
+    /* Modern toggler with hamburger animation */
+    .navbar-custom .navbar-toggler {
+      border: none;
+      padding: .5rem;
+      border-radius: 8px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      width: 40px;
+      height: 40px;
+    }
+
+    .navbar-custom .navbar-toggler:focus {
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+      outline: none;
+    }
+
+    .navbar-custom .navbar-toggler:hover {
+      background-color: rgba(59, 130, 246, 0.05);
+    }
+
+    .navbar-custom .navbar-toggler-icon {
+      background: none;
+      width: 20px;
+      height: 20px;
+      position: relative;
+      transform: rotate(0deg);
+      transition: .3s ease-in-out;
+    }
+
+    .navbar-custom .navbar-toggler-icon,
+    .navbar-custom .navbar-toggler-icon::before,
+    .navbar-custom .navbar-toggler-icon::after {
+      display: block;
+      position: absolute;
+      height: 2px;
+      width: 100%;
+      background: #374151;
+      border-radius: 1px;
+      opacity: 1;
+      left: 0;
+      transform: rotate(0deg);
+      transition: .3s ease-in-out;
+    }
+
+    .navbar-custom .navbar-toggler-icon::before,
+    .navbar-custom .navbar-toggler-icon::after {
+      content: "";
+    }
+
+    .navbar-custom .navbar-toggler-icon::before {
+      top: -6px;
+    }
+
+    .navbar-custom .navbar-toggler-icon::after {
+      top: 6px;
+    }
+
+    .navbar-custom .navbar-toggler[aria-expanded="true"] .navbar-toggler-icon {
+      background: transparent;
+    }
+
+    .navbar-custom .navbar-toggler[aria-expanded="true"] .navbar-toggler-icon::before {
+      top: 0px;
+      transform: rotate(135deg);
+    }
+
+    .navbar-custom .navbar-toggler[aria-expanded="true"] .navbar-toggler-icon::after {
+      top: 0px;
+      transform: rotate(-135deg);
+    }
+
+    /* Enhanced brand styling */
     .navbar-brand {
-      font-size: 1.5rem !important;
-      font-weight: 600 !important;
-      color: white !important;
+      font-size: 1.125rem !important;
+      font-weight: 700 !important;
+      color: #111827 !important;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      text-decoration: none !important;
     }
 
-    .nav-link {
-      color: rgba(255, 255, 255, 0.9) !important;
+    .navbar-brand:hover {
+      color: #1e40af !important;
+      transform: translateY(-1px);
+    }
+
+    .navbar-brand .brand-logo { 
+      height: 36px; 
+      width: auto; 
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .navbar-brand:hover .brand-logo {
+      transform: scale(1.05);
+    }
+
+    .navbar-brand .brand-name { 
+      letter-spacing: -0.025em; 
+      line-height: 1.1; 
+    }
+
+    .navbar-brand .brand-tagline { 
+      display: block; 
+      font-size: .75rem; 
+      font-weight: 500; 
+      color: #6b7280; 
+      margin-top: .15rem;
+      opacity: 0.8;
+    }
+
+    /* Modern nav links with enhanced animations */
+    .navbar-custom .nav-link {
+      color: #4b5563 !important;
       font-weight: 500;
-      border-radius: 6px;
-      padding: 0.5rem 1rem !important;
-      margin: 0 0.25rem;
-      transition: all 0.2s ease;
+      border-radius: 10px;
+      padding: .5rem 1rem !important;
+      margin: 0 .25rem;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
     }
 
-    .nav-link:hover, .nav-link:focus {
-      color: white !important;
-      background-color: rgba(255, 255, 255, 0.1);
+    .navbar-custom .nav-link::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.1), transparent);
+      transition: left 0.5s;
+    }
+
+    .navbar-custom .nav-link:hover::before {
+      left: 100%;
+    }
+
+    .navbar-custom .nav-link:hover, 
+    .navbar-custom .nav-link:focus {
+      color: #1e40af !important;
+      background-color: rgba(59, 130, 246, 0.08);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+    }
+
+    .navbar-custom .nav-link.active {
+      color: #1e40af !important;
+      background-color: rgba(59, 130, 246, 0.1);
+      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
     }
 
     .navbar-text {
-      color: rgba(255, 255, 255, 0.8) !important;
+      color: #6b7280 !important;
     }
 
     .btn-link.nav-link {
@@ -142,7 +285,7 @@
     .alert {
       border: none;
       border-radius: 8px;
-      box-shadow: var(--shadow-sm);
+      padding: .75rem 0;
     }
 
     .alert-success {
@@ -152,17 +295,12 @@
 
     .alert-danger {
       background-color: #fef2f2;
-      color: #dc2626;
-    }
-
-    .alert-warning {
-      background-color: #fefbeb;
-      color: #d97706;
+      color: #991b1b;
     }
 
     .alert-info {
       background-color: #f0f9ff;
-      color: #0369a1;
+      color: #1e40af;
     }
 
     .form-control, .form-select {
@@ -203,18 +341,178 @@
       border-radius: 6px;
     }
 
+    /* Enhanced dropdown menus */
     .dropdown-menu {
-      border: 1px solid var(--border-color);
-      border-radius: 8px;
-      box-shadow: var(--shadow-lg);
-      padding: 0.5rem;
+      border: 1px solid rgba(0, 0, 0, 0.04);
+      border-radius: 16px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      padding: .75rem;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      background: rgba(255, 255, 255, 0.95);
+      animation: dropdownFadeIn 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      transform-origin: top;
+    }
+
+    @keyframes dropdownFadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(-10px) scale(0.95);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
     }
 
     .dropdown-item {
-      border-radius: 6px;
-      padding: 0.5rem 1rem;
-      transition: all 0.2s ease;
+      border-radius: 10px;
+      padding: .6rem 1rem;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      font-weight: 500;
+      position: relative;
+      overflow: hidden;
     }
+
+    .dropdown-item::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.05), transparent);
+      transition: left 0.5s;
+    }
+
+    .dropdown-item:hover::before {
+      left: 100%;
+    }
+
+    .dropdown-item:hover {
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(147, 197, 253, 0.05));
+      color: #1e40af;
+      transform: translateX(4px);
+    }
+
+    .dropdown-header {
+      font-weight: 700;
+      color: #374151;
+      padding: .5rem 1rem .75rem;
+    }
+
+    .dropdown-divider {
+      margin: .5rem 0;
+      opacity: 0.6;
+    }
+
+    /* Avatar enhancements */
+    .avatar {
+      background: linear-gradient(135deg, #e5e7eb, #d1d5db) !important;
+      color: #374151 !important;
+      border: 2px solid rgba(255, 255, 255, 0.8);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .dropdown-toggle .avatar:hover {
+      transform: scale(1.1);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    /* Enhanced notifications with modern animations */
+    #notif-toggle.dropdown-toggle::after { display: none !important; }
+    #notif-toggle { 
+      position: relative; 
+      padding: .5rem !important; 
+      border-radius: 10px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    #notif-toggle:hover {
+      background-color: rgba(59, 130, 246, 0.08);
+      transform: translateY(-2px);
+    }
+
+    #notif-toggle .notif-icon { 
+      font-size: 1.2rem; 
+      color: #6b7280;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    #notif-toggle:hover .notif-icon {
+      color: #1e40af;
+      transform: scale(1.1);
+    }
+
+    #notif-count {
+      position: absolute; 
+      top: -2px; 
+      right: -2px;
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+      color: #fff; 
+      border-radius: 999px;
+      font-size: .65rem; 
+      line-height: 1; 
+      padding: .2rem .35rem;
+      box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9), 0 2px 8px rgba(239, 68, 68, 0.3);
+      animation: notificationPulse 2s infinite;
+      min-width: 18px;
+      text-align: center;
+    }
+
+    @keyframes notificationPulse {
+      0%, 100% { 
+        transform: scale(1); 
+        box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9), 0 2px 8px rgba(239, 68, 68, 0.3);
+      }
+      50% { 
+        transform: scale(1.1); 
+        box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9), 0 4px 12px rgba(239, 68, 68, 0.4);
+      }
+    }
+
+    /* Enhanced CTA button with modern design */
+    .btn-navbar-cta {
+      background: linear-gradient(135deg, #1e40af, #3b82f6);
+      border: none;
+      color: #ffffff;
+      font-weight: 600;
+      padding: .55rem 1.2rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 14px 0 rgba(30, 64, 175, 0.2);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn-navbar-cta::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+      transition: left 0.6s;
+    }
+
+    .btn-navbar-cta:hover::before {
+      left: 100%;
+    }
+
+    .btn-navbar-cta:hover { 
+      transform: translateY(-3px);
+      box-shadow: 0 8px 25px 0 rgba(30, 64, 175, 0.35);
+      background: linear-gradient(135deg, #1e3a8a, #2563eb);
+    }
+
+    .btn-navbar-cta:active {
+      transform: translateY(-1px);
+    }
+
+    /* Subtle separators between left and right sections */
+  .navbar .nav-sep{ width: 1px; height: 24px; background: rgba(0,0,0,.1); margin: 0 .5rem; display: none; }
+    @media (min-width: 992px){ .navbar .nav-sep{ display: inline-block; } }
 
     .dropdown-item:hover {
       background-color: var(--secondary-gray);
@@ -276,19 +574,167 @@
         margin: 0.25rem 0;
       }
     }
+
+    /* Extra small devices adjustments */
+    /* Enhanced responsive design */
+    @media (max-width: 991px) {
+      .navbar-custom { 
+        padding: .6rem 0; 
+      }
+      
+      .navbar-custom .navbar-collapse {
+        margin-top: 1rem;
+        padding: 1rem;
+        background: rgba(255, 255, 255, 0.98);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border-radius: 16px;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+        animation: mobileMenuSlide 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      @keyframes mobileMenuSlide {
+        from {
+          opacity: 0;
+          transform: translateY(-20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .navbar-custom .nav-link {
+        padding: .75rem 1rem !important;
+        margin: .25rem 0;
+        border-radius: 12px;
+      }
+
+      .btn-navbar-cta {
+        width: 100%;
+        margin-top: .5rem;
+        justify-content: center;
+      }
+
+      /* Enhanced mobile dropdowns */
+      .navbar .dropdown-menu {
+        width: 100%;
+        position: static;
+        float: none;
+        margin-top: .75rem;
+        border-radius: 12px;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+        background: rgba(249, 250, 251, 0.95);
+      }
+    }
+
+    @media (max-width: 576px) {
+      .navbar-custom { 
+        padding: .5rem 0; 
+      }
+      
+      .navbar-brand { 
+        font-size: 1.1rem !important; 
+      }
+      
+      .navbar-brand .brand-logo { 
+        height: 32px; 
+      }
+      
+      .navbar-custom .navbar-collapse {
+        padding: .75rem;
+        margin-top: .75rem;
+      }
+
+      .nav-link { 
+        padding: .65rem .75rem !important; 
+        font-size: .9rem;
+      }
+
+      #notif-toggle {
+        padding: .4rem !important;
+      }
+
+      .avatar {
+        width: 24px !important;
+        height: 24px !important;
+        font-size: .7rem !important;
+      }
+    }
+
+    /* Footer Enhancements */
+    footer .hover-primary:hover {
+      color: var(--primary-blue) !important;
+      transform: translateX(2px);
+      transition: all 0.2s ease;
+    }
+
+    footer h6 {
+      position: relative;
+      padding-bottom: 0.5rem;
+    }
+
+    footer h6::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 30px;
+      height: 2px;
+      background: var(--primary-blue);
+      border-radius: 1px;
+    }
+
+    footer .btn-outline-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+
+    footer .badge {
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
+    /* Footer responsive adjustments */
+    @media (max-width: 992px) {
+      footer .container-main {
+        padding-top: 2rem !important;
+        padding-bottom: 1.5rem !important;
+      }
+    }
+
+    @media (max-width: 768px) {
+      footer h6 {
+        font-size: 0.9rem;
+        margin-bottom: 1rem !important;
+      }
+      
+      footer .col-6:not(.col-lg-4) {
+        margin-bottom: 1.5rem;
+      }
+    }
   </style>
 </head>
 <body>
+{% block navbar %}
 <nav class="navbar navbar-expand-lg navbar-custom">
   <div class="container-fluid">
-    <a class="navbar-brand" href="/">
-      <i class="bi bi-gear-fill me-2"></i>Gestor de Servicios
+    <a class="navbar-brand d-flex align-items-center" href="/">
+      <img src="{% static BRAND_LOGO %}" alt="Logo" class="brand-logo me-2" onerror="this.style.display='none'">
+      <span>
+        <span class="brand-name">{{ BRAND_NAME }}</span>
+        {% if BRAND_TAGLINE %}<small class="brand-tagline">{{ BRAND_TAGLINE }}</small>{% endif %}
+      </span>
     </a>
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav" aria-controls="nav" aria-expanded="false" aria-label="Toggle navigation">
       <span class="navbar-toggler-icon"></span>
     </button>
     <div id="nav" class="collapse navbar-collapse">
-      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+      <ul class="navbar-nav me-auto mb-2 mb-lg-0 align-items-lg-center">
         <li class="nav-item">
           <a class="nav-link" href="/tickets/">
             <i class="bi bi-list-task me-1"></i>Requerimientos
@@ -313,20 +759,32 @@
             </a>
           </li>
         {% endif %}
+        <li class="nav-item d-lg-block d-none ms-2">
+          <a href="{% url 'ticket_create' %}" class="btn btn-navbar-cta">
+            <i class="bi bi-plus-lg me-1"></i> Nuevo requerimiento
+          </a>
+        </li>
       </ul>
-      <ul class="navbar-nav">
+      <span class="nav-sep d-none d-lg-inline-block"></span>
+      <ul class="navbar-nav align-items-lg-center">
         {% if request.user.is_authenticated %}
           <li class="nav-item dropdown me-2" id="notif-root" data-user-id="{{ request.user.id }}">
-            <a id="notif-toggle" class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-              <i class="bi bi-bell me-1"></i>Notificaciones
+            <a id="notif-toggle" class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Notificaciones">
+              <i class="bi bi-bell notif-icon"></i>
+              <span id="notif-count" class="badge d-none">0</span>
+              <span class="visually-hidden">Notificaciones</span>
             </a>
             <ul id="notif-menu" class="dropdown-menu dropdown-menu-end">
               <li><span class="dropdown-item-text text-muted small">Cargando…</span></li>
             </ul>
           </li>
           <li class="nav-item dropdown me-2">
-            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-              <i class="bi bi-person-circle me-1"></i>{{ request.user.get_full_name|default:request.user.username }}
+            <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Perfil">
+              <span class="avatar rounded-circle d-inline-flex justify-content-center align-items-center me-1" style="width:28px;height:28px;background:#e5e7eb;color:#374151;font-weight:700;font-size:.8rem;">
+                {% with name=request.user.get_full_name|default:request.user.username %}
+                  {% firstof name|slice:":1" "?" %}
+                {% endwith %}
+              </span>
             </a>
             <ul class="dropdown-menu dropdown-menu-end">
               <li>
@@ -368,10 +826,16 @@
             </a>
           </li>
         {% endif %}
+        <li class="nav-item d-lg-none mt-2">
+          <a href="{% url 'ticket_create' %}" class="btn btn-navbar-cta w-100">
+            <i class="bi bi-plus-lg me-1"></i> Nuevo requerimiento
+          </a>
+        </li>
       </ul>
     </div>
   </div>
-</nav>
+ </nav>
+{% endblock %}
 
 <main class="container-main">
   {% if messages %}
@@ -385,17 +849,222 @@
     </div>
   {% endif %}
   {% block content %}{% endblock %}
-</main>
+  </main>
+  {% block footer %}
+  <footer class="mt-5 border-top" style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); box-shadow: 0 -2px 8px rgba(0,0,0,0.05);">
+    <div class="container-main" style="padding-top:2.5rem; padding-bottom:2rem;">
+      <div class="row g-4">
+        <!-- Brand Section -->
+        <div class="col-12 col-lg-4">
+          <div class="d-flex align-items-center mb-3">
+            <img src="{% static BRAND_LOGO %}" alt="Logo" style="height:36px; width:auto;" class="me-3" onerror="this.style.display='none'">
+            <div>
+              <div class="fw-bold fs-5 text-primary">{{ BRAND_NAME }}</div>
+              {% if BRAND_TAGLINE %}<small class="text-muted d-block lh-sm">{{ BRAND_TAGLINE }}</small>{% endif %}
+            </div>
+          </div>
+          <p class="text-muted small mb-3 lh-base">
+            Sistema integral de gestión de servicios técnicos diseñado para optimizar la atención y seguimiento de requerimientos institucionales.
+          </p>
+          <div class="d-flex gap-2">
+            <a href="#" class="btn btn-outline-primary btn-sm" title="Soporte técnico">
+              <i class="bi bi-headset"></i>
+            </a>
+            <a href="#" class="btn btn-outline-primary btn-sm" title="Documentación">
+              <i class="bi bi-file-text"></i>
+            </a>
+            <a href="#" class="btn btn-outline-primary btn-sm" title="Ayuda">
+              <i class="bi bi-question-circle"></i>
+            </a>
+          </div>
+        </div>
+  
+        <!-- Quick Links -->
+        <div class="col-6 col-lg-2">
+          <h6 class="fw-bold text-dark mb-3">
+            <i class="bi bi-link-45deg me-1"></i>Enlaces Rápidos
+          </h6>
+          <ul class="list-unstyled">
+            <li class="mb-2"><a class="text-decoration-none text-muted hover-primary" href="/"><i class="bi bi-house me-2"></i>Inicio</a></li>
+            {% if request.user.is_authenticated %}
+              <li class="mb-2"><a class="text-decoration-none text-muted hover-primary" href="/tickets/"><i class="bi bi-list-task me-2"></i>Requerimientos</a></li>
+              <li class="mb-2"><a class="text-decoration-none text-muted hover-primary" href="/estadisticas/"><i class="bi bi-graph-up me-2"></i>Estadísticas</a></li>
+              <li class="mb-2"><a class="text-decoration-none text-muted hover-primary" href="/accounts/profile/"><i class="bi bi-person me-2"></i>Mi Perfil</a></li>
+            {% else %}
+              <li class="mb-2"><a class="text-decoration-none text-muted hover-primary" href="/accounts/login/"><i class="bi bi-box-arrow-in-right me-2"></i>Entrar</a></li>
+              <li class="mb-2"><a class="text-decoration-none text-muted hover-primary" href="/accounts/register/"><i class="bi bi-person-plus me-2"></i>Registrarse</a></li>
+            {% endif %}
+          </ul>
+        </div>
+  
+        <!-- Administration (if user is jefe) -->
+        {% if request.user.is_authenticated and request.user.is_jefe %}
+        <div class="col-6 col-lg-2">
+          <h6 class="fw-bold text-dark mb-3">
+            <i class="bi bi-gear me-1"></i>Administración
+          </h6>
+          <ul class="list-unstyled">
+            <li class="mb-2"><a class="text-decoration-none text-muted hover-primary" href="/oficinas/"><i class="bi bi-building me-2"></i>Oficinas</a></li>
+            <li class="mb-2"><a class="text-decoration-none text-muted hover-primary" href="/accounts/users/"><i class="bi bi-people me-2"></i>Usuarios</a></li>
+            <li class="mb-2"><a class="text-decoration-none text-muted hover-primary" href="/accounts/notifications/"><i class="bi bi-bell me-2"></i>Notificaciones</a></li>
+          </ul>
+        </div>
+        {% endif %}
+  
+        <!-- Legal & Resources -->
+        <div class="col-6 col-lg-2">
+          <h6 class="fw-bold text-dark mb-3">
+            <i class="bi bi-shield-check me-1"></i>Legal
+          </h6>
+          <ul class="list-unstyled">
+            <li class="mb-2"><a class="text-decoration-none text-muted hover-primary" href="#"><i class="bi bi-file-earmark-text me-2"></i>Términos de Uso</a></li>
+            <li class="mb-2"><a class="text-decoration-none text-muted hover-primary" href="#"><i class="bi bi-shield-lock me-2"></i>Privacidad</a></li>
+            <li class="mb-2"><a class="text-decoration-none text-muted hover-primary" href="#"><i class="bi bi-info-circle me-2"></i>Acerca de</a></li>
+          </ul>
+        </div>
+  
+        <!-- Contact & Support -->
+        <div class="col-12 col-lg-2">
+          <h6 class="fw-bold text-dark mb-3">
+            <i class="bi bi-telephone me-1"></i>Contacto
+          </h6>
+          <ul class="list-unstyled small">
+            <li class="mb-2 d-flex align-items-start">
+              <i class="bi bi-envelope text-primary me-2 mt-1"></i>
+              <div>
+                <div class="fw-medium">Email</div>
+                <a href="mailto:{{ FOOTER_CONTACT_EMAIL }}" class="text-muted text-decoration-none hover-primary">{{ FOOTER_CONTACT_EMAIL }}</a>
+              </div>
+            </li>
+            <li class="mb-2 d-flex align-items-start">
+              <i class="bi bi-geo-alt text-primary me-2 mt-1"></i>
+              <div>
+                <div class="fw-medium">Ubicación</div>
+                <span class="text-muted">{{ FOOTER_CONTACT_LOCATION }}</span>
+              </div>
+            </li>
+            <li class="mb-2 d-flex align-items-start">
+              <i class="bi bi-clock text-primary me-2 mt-1"></i>
+              <div>
+                <div class="fw-medium">Horario</div>
+                <span class="text-muted">Lun - Vie: 8:00 - 17:00</span>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </div>
+  
+      <!-- Bottom Bar -->
+      <hr class="my-4 border-secondary-subtle">
+      <div class="row align-items-center">
+        <div class="col-12 col-md-6">
+          <div class="d-flex align-items-center text-muted small">
+            <i class="bi bi-c-circle me-1"></i>
+            <span id="year"></span>
+            <span class="mx-2">•</span>
+            <span>Desarrollado con</span>
+            <i class="bi bi-heart-fill text-danger mx-1" style="font-size: 0.8rem;"></i>
+            <span>por</span>
+            <strong class="ms-1 text-primary">José Luis Romero González</strong>
+          </div>
+        </div>
+        <div class="col-12 col-md-6 text-md-end mt-2 mt-md-0">
+          <div class="text-muted small">
+            <span class="badge bg-success bg-opacity-10 text-success me-2">
+              <i class="bi bi-check-circle me-1"></i>Sistema Activo
+            </span>
+            <span>Versión 1.0.0</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </footer>
+  {% endblock %}
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
   (function(){
+    // Footer: dynamic year
+    var y=document.getElementById('year'); if(y){ y.textContent = new Date().getFullYear(); }
+
+    // Enhanced navbar scroll behavior
+    let lastScrollTop = 0;
+    const navbar = document.querySelector('.navbar-custom');
+    
+    function handleScroll() {
+      const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+      
+      // Add scrolled class for visual changes
+      if (scrollTop > 50) {
+        navbar.classList.add('scrolled');
+      } else {
+        navbar.classList.remove('scrolled');
+      }
+      
+      // Optional: Hide navbar on scroll down, show on scroll up
+      if (scrollTop > lastScrollTop && scrollTop > 100) {
+        navbar.style.transform = 'translateY(-100%)';
+      } else {
+        navbar.style.transform = 'translateY(0)';
+      }
+      
+      lastScrollTop = scrollTop <= 0 ? 0 : scrollTop;
+    }
+    
+    // Throttle scroll events for better performance
+    let ticking = false;
+    function requestTick() {
+      if (!ticking) {
+        requestAnimationFrame(handleScroll);
+        ticking = true;
+        setTimeout(() => { ticking = false; }, 16);
+      }
+    }
+    
+    window.addEventListener('scroll', requestTick, { passive: true });
+
+    // Add active state to current page nav links
+    const currentPath = window.location.pathname;
+    const navLinks = document.querySelectorAll('.navbar-nav .nav-link');
+    
+    navLinks.forEach(link => {
+      if (link.getAttribute('href') === currentPath) {
+        link.classList.add('active');
+      }
+    });
+
+    // Enhanced mobile menu animation
+    const navbarToggler = document.querySelector('.navbar-toggler');
+    const navbarCollapse = document.querySelector('.navbar-collapse');
+    
+    if (navbarToggler && navbarCollapse) {
+      navbarCollapse.addEventListener('show.bs.collapse', function() {
+        navbarToggler.setAttribute('aria-expanded', 'true');
+      });
+      
+      navbarCollapse.addEventListener('hide.bs.collapse', function() {
+        navbarToggler.setAttribute('aria-expanded', 'false');
+      });
+    }
     var root = document.getElementById('notif-root');
     if (!root) return;
     function renderNotifs(data){
       var toggle = document.getElementById('notif-toggle');
       var menu = document.getElementById('notif-menu');
       if (!toggle || !menu) return;
-      toggle.textContent = 'Notificaciones' + (data.unread ? ' ('+data.unread+')' : '');
+      var countEl = document.getElementById('notif-count');
+      var iconEl = toggle.querySelector('.notif-icon');
+      var unread = Number(data.unread || 0);
+      if (countEl){
+        if (unread > 0){
+          countEl.classList.remove('d-none');
+          countEl.textContent = unread > 99 ? '99+' : String(unread);
+          if (iconEl){ iconEl.classList.remove('bi-bell'); iconEl.classList.add('bi-bell-fill'); }
+        } else {
+          countEl.classList.add('d-none');
+          countEl.textContent = '0';
+          if (iconEl){ iconEl.classList.remove('bi-bell-fill'); iconEl.classList.add('bi-bell'); }
+        }
+      }
       var html = '';
       if (data.items && data.items.length){
         html = data.items.map(function(n){
@@ -408,6 +1077,50 @@
     }
     function fetchNotifs(){
       fetch('/accounts/notifications/data/').then(function(r){return r.json();}).then(renderNotifs).catch(function(){});
+    }
+    // Get CSRF token from cookie (Django)
+    function getCsrfToken(){
+      var name = 'csrftoken=';
+      var decodedCookie = decodeURIComponent(document.cookie || '');
+      var ca = decodedCookie.split(';');
+      for (var i = 0; i < ca.length; i++){
+        var c = ca[i].trim();
+        if (c.indexOf(name) === 0){ return c.substring(name.length, c.length); }
+      }
+      return null;
+    }
+    // Mark all notifications as read
+    var markingAll = false;
+    function markAllRead(){
+      if (markingAll) return;
+      var csrf = getCsrfToken();
+      if (!csrf) return; // can't safely POST without CSRF
+      markingAll = true;
+      fetch('/accounts/notifications/read_all/', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrf },
+        credentials: 'same-origin'
+      }).then(function(){
+        // Refresh UI state after marking as read
+        fetchNotifs();
+      }).catch(function(){
+        // ignore
+      }).finally(function(){ markingAll = false; });
+    }
+    // Hook: when dropdown opens, mark all as read if there are unread
+    var toggleEl = document.getElementById('notif-toggle');
+    if (toggleEl){
+      toggleEl.addEventListener('shown.bs.dropdown', function(){
+        var countEl = document.getElementById('notif-count');
+        if (!countEl) return;
+        var hidden = countEl.classList.contains('d-none');
+        var val = 0;
+        if (!hidden){
+          var txt = (countEl.textContent || '0').trim();
+          val = (txt === '99+') ? 99 : parseInt(txt, 10) || 0;
+        }
+        if (val > 0){ markAllRead(); }
+      });
     }
     // Carga inicial
     fetchNotifs();

@@ -19,6 +19,7 @@ from django.urls import path, include
 from django.views.generic import TemplateView
 from django.conf import settings
 from django.conf.urls.static import static
+from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 from . import views as core_views
 
 urlpatterns = [
@@ -27,7 +28,12 @@ urlpatterns = [
     path('dashboard/', core_views.dashboard, name='dashboard'),
     path('estadisticas/', core_views.my_stats, name='my_stats'),
     path('estadisticas/data/', core_views.my_stats_data, name='my_stats_data'),
+    path('estadisticas/technicians/', core_views.get_technicians_by_office, name='get_technicians_by_office'),
     path('accounts/', include('accounts.urls')),
     path('oficinas/', include('oficinas.urls')),
     path('tickets/', include('tickets.urls')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+# Serve static files in development (including when using Daphne)
+if settings.DEBUG:
+    urlpatterns += staticfiles_urlpatterns()

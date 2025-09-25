@@ -4,7 +4,8 @@ from django.http import JsonResponse
 from accounts.models import CustomUser
 from oficinas.models import Office
 from tickets.models import Ticket, TicketStatus
-from django.db.models import Count
+from django.db.models import Count, Q
+from datetime import date
 import json
 
 
@@ -15,11 +16,41 @@ def is_jefe(user):
 @login_required
 @user_passes_test(is_jefe)
 def dashboard(request):
-    by_status = Ticket.objects.values('status').annotate(total=Count('id')).order_by()
-    by_office = Ticket.objects.values('assigned_office__name').annotate(total=Count('id')).order_by('-total')
-    pending_count = Ticket.objects.filter(status__in=[TicketStatus.DRAFT, TicketStatus.ASSIGNED]).count()
-    in_progress_count = Ticket.objects.filter(status=TicketStatus.IN_PROGRESS).count()
-    completed_count = Ticket.objects.filter(status=TicketStatus.COMPLETED).count()
+    # Filtros por fecha y estado
+    start_str = request.GET.get('start')
+    end_str = request.GET.get('end')
+    statuses = request.GET.getlist('status')  # puede ser múltiple
+
+    qs = Ticket.objects.all()
+
+    # Validar y aplicar fechas
+    start = None
+    end = None
+    try:
+        if start_str:
+            start = date.fromisoformat(start_str)
+            qs = qs.filter(created_at__date__gte=start)
+    except Exception:
+        start = None
+    try:
+        if end_str:
+            end = date.fromisoformat(end_str)
+            qs = qs.filter(created_at__date__lte=end)
+    except Exception:
+        end = None
+
+    # Validar y aplicar estados
+    valid_status_codes = {choice.value for choice in TicketStatus}
+    if statuses:
+        statuses = [s for s in statuses if s in valid_status_codes]
+        if statuses:
+            qs = qs.filter(status__in=statuses)
+
+    by_status = qs.values('status').annotate(total=Count('id')).order_by()
+    by_office = qs.values('assigned_office__name').annotate(total=Count('id')).order_by('-total')
+    pending_count = qs.filter(status__in=[TicketStatus.DRAFT, TicketStatus.ASSIGNED]).count()
+    in_progress_count = qs.filter(status=TicketStatus.IN_PROGRESS).count()
+    completed_count = qs.filter(status=TicketStatus.COMPLETED).count()
     # Dashboard JSON payload for charts
     status_data = []
     for row in by_status:
@@ -44,14 +75,27 @@ def dashboard(request):
         'statusData': status_data,
         'officeData': office_data,
     }
+    # Choices de estado para UI
+    status_choices = [
+        {'code': c.value, 'label': c.label}
+        for c in TicketStatus
+    ]
+
     context = {
-        'total_tickets': Ticket.objects.count(),
+        'total_tickets': Ticket.objects.count(),  # total global
+        'total_tickets_filtered': qs.count(),      # total según filtros
         'pending_count': pending_count,
         'in_progress_count': in_progress_count,
         'completed_count': completed_count,
         'by_status': by_status,
         'by_office': by_office,
         'dashboard_payload': dashboard_payload,
+        'status_choices': status_choices,
+        'filters': {
+            'start': start_str or '',
+            'end': end_str or '',
+            'statuses': statuses,
+        }
     }
     return render(request, 'dashboard.html', context)
 
@@ -98,6 +142,15 @@ def my_stats(request):
         ]
         context['by_office'] = by_office_raw  # para mostrar en HTML
         stats_payload['byOffice'] = by_office_formatted
+        
+        # Agregar listas para filtros
+        context['all_offices'] = Office.objects.all().order_by('name')
+        context['all_technicians'] = CustomUser.objects.filter(role='TECNICO').select_related('office').order_by('first_name', 'last_name', 'username')
+        # Choices de estado para checkboxes en UI
+        context['status_choices'] = [
+            { 'code': c.value, 'label': c.label }
+            for c in TicketStatus
+        ]
         
     elif user.is_supervisor:
         context['role'] = 'SUPERVISOR'
@@ -161,20 +214,136 @@ def my_stats_data(request):
     user = request.user
     # Build JSON payload per role with the same fields used in the template
     if user.is_jefe:
-        by_status = list(Ticket.objects.values('status').annotate(total=Count('id')).order_by())
+        # Obtener parámetros de filtro
+        office_id = request.GET.get('office_id')
+        technician_id = request.GET.get('technician_id')
+        start_str = request.GET.get('start')
+        end_str = request.GET.get('end')
+        statuses = request.GET.getlist('status')  # puede ser múltiple
+        
+        # Base queryset
+        tickets_qs = Ticket.objects.all()
+        
+        # Aplicar filtros
+        if office_id and office_id != 'all':
+            try:
+                office_id = int(office_id)
+                tickets_qs = tickets_qs.filter(assigned_office_id=office_id)
+            except (ValueError, TypeError):
+                pass
+                
+        if technician_id and technician_id != 'all':
+            try:
+                technician_id = int(technician_id)
+                tickets_qs = tickets_qs.filter(technician_id=technician_id)
+            except (ValueError, TypeError):
+                pass
+        # Fechas (ISO yyyy-mm-dd) sobre created_at__date
+        from datetime import date
+        try:
+            if start_str:
+                start = date.fromisoformat(start_str)
+                tickets_qs = tickets_qs.filter(created_at__date__gte=start)
+        except Exception:
+            start = None
+        try:
+            if end_str:
+                end = date.fromisoformat(end_str)
+                tickets_qs = tickets_qs.filter(created_at__date__lte=end)
+        except Exception:
+            end = None
+        # Estados
+        valid_status_codes = {choice.value for choice in TicketStatus}
+        if statuses:
+            statuses = [s for s in statuses if s in valid_status_codes]
+            if statuses:
+                tickets_qs = tickets_qs.filter(status__in=statuses)
+        
+        by_status = list(tickets_qs.values('status').annotate(total=Count('id')).order_by())
         try:
             by_status = [
-                {'status': TicketStatus(row['status']).label, 'total': row['total']}
+                {'status': TicketStatus(row['status']).label, 'total': row['total'], 'code': row['status']}
                 for row in by_status
             ]
         except Exception:
             pass
         by_office = list(
-            Ticket.objects.values('assigned_office__name').annotate(total=Count('id')).order_by('-total')
+            tickets_qs.values('assigned_office__name').annotate(total=Count('id')).order_by('-total')
         )
-        return JsonResponse({
+
+        # Distribuciones adicionales
+        by_technician = []
+        by_supervisor = []
+        # Por técnico: tiene sentido cuando hay oficina concreta seleccionada
+        if office_id and office_id != 'all':
+            by_technician_qs = (
+                tickets_qs
+                .filter(technician__isnull=False)
+                .values('technician_id',
+                        'technician__first_name', 'technician__last_name', 'technician__username')
+                .annotate(total=Count('id'))
+                .order_by('-total')
+            )
+            for row in by_technician_qs:
+                first = row.get('technician__first_name') or ''
+                last = row.get('technician__last_name') or ''
+                uname = row.get('technician__username') or ''
+                full_name = (first + ' ' + last).strip() or uname
+                by_technician.append({
+                    'technician_id': row.get('technician_id'),
+                    'name': full_name,
+                    'total': row.get('total', 0),
+                })
+        # Por supervisor: incluir siempre (respetando otros filtros aplicados)
+        try:
+            by_supervisor_qs = (
+                tickets_qs
+                .filter(supervisor__isnull=False)
+                .values('supervisor_id',
+                        'supervisor__first_name', 'supervisor__last_name', 'supervisor__username')
+                .annotate(total=Count('id'))
+                .order_by('-total')
+            )
+            for row in by_supervisor_qs:
+                first = row.get('supervisor__first_name') or ''
+                last = row.get('supervisor__last_name') or ''
+                uname = row.get('supervisor__username') or ''
+                full_name = (first + ' ' + last).strip() or uname
+                by_supervisor.append({
+                    'supervisor_id': row.get('supervisor_id'),
+                    'name': full_name,
+                    'total': row.get('total', 0),
+                })
+        except Exception:
+            by_supervisor = []
+        
+        # Estadísticas adicionales para filtros
+        filter_info = {}
+        if office_id and office_id != 'all':
+            try:
+                office = Office.objects.get(id=office_id)
+                filter_info['office_name'] = office.name
+            except Office.DoesNotExist:
+                pass
+                
+        if technician_id and technician_id != 'all':
+            try:
+                tech = CustomUser.objects.get(id=technician_id)
+                filter_info['technician_name'] = tech.get_full_name() or tech.username
+            except CustomUser.DoesNotExist:
+                pass
+        # Añadir filtros de fecha/estado a la respuesta
+        filters_payload = {
+            'start': start_str or '',
+            'end': end_str or '',
+            'statuses': statuses or [],
+            'office_id': office_id or 'all',
+            'technician_id': technician_id or 'all',
+        }
+        
+        payload = {
             'role': 'JEFE',
-            'total_tickets': Ticket.objects.count(),
+            'total_tickets': tickets_qs.count(),
             'by_status': by_status,
             'by_office': [
                 {
@@ -182,7 +351,14 @@ def my_stats_data(request):
                     'total': row['total']
                 } for row in by_office
             ],
-        })
+            'filter_info': filter_info,
+            'filters': filters_payload,
+        }
+        if by_technician:
+            payload['by_technician'] = by_technician
+        if by_supervisor:
+            payload['by_supervisor'] = by_supervisor
+        return JsonResponse(payload)
     elif user.is_supervisor:
         qs = Ticket.objects.filter(assigned_office=user.office)
         por_estado = list(qs.values('status').annotate(total=Count('id')).order_by())
@@ -236,3 +412,59 @@ def my_stats_data(request):
         })
     else:
         return JsonResponse({'role': 'NONE'})
+
+
+@login_required
+def get_technicians_by_office(request):
+    """Endpoint para obtener técnicos filtrados por oficina"""
+    if not request.user.is_jefe:
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+    
+    office_id = request.GET.get('office_id')
+    
+    if office_id and office_id != 'all':
+        try:
+            office_id = int(office_id)
+            # Incluir usuarios de la oficina que sean técnicos oficialmente
+            # o que aparezcan como técnicos en tickets de esa oficina.
+            tech_ids_from_tickets = Ticket.objects.filter(
+                assigned_office_id=office_id,
+                technician__isnull=False
+            ).values_list('technician_id', flat=True).distinct()
+
+            technicians = (
+                CustomUser.objects
+                .filter(office_id=office_id)
+                .filter(Q(role='TECNICO') | Q(id__in=tech_ids_from_tickets))
+                .select_related('office')
+                .order_by('first_name', 'last_name', 'username')
+            )
+        except (ValueError, TypeError):
+            technicians = CustomUser.objects.none()
+    else:
+        # Si no hay filtro o es 'all', devolver técnicos activos y aprobados
+        technicians = (
+            CustomUser.objects
+            .filter(role='TECNICO')
+            .select_related('office')
+            .order_by('first_name', 'last_name', 'username')
+        )
+    
+    technicians_data = []
+    for tech in technicians:
+        # Prefer full name only; if missing both first/last names, show a generic label
+        name = tech.get_full_name().strip()
+        if not name:
+            name = 'Sin nombre'
+        office_name = tech.office.name if tech.office else 'Sin oficina'
+        technicians_data.append({
+            'id': tech.id,
+            'name': name,
+            'office_name': office_name,
+            'display_name': f"{name} ({office_name})",
+            'last_first': f"{tech.last_name}, {tech.first_name}".strip(', ')
+        })
+    
+    return JsonResponse({
+        'technicians': technicians_data
+    })

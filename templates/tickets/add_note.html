@@ -2,11 +2,29 @@
 {% load crispy_forms_tags %}
 {% block title %}Agregar observación{% endblock %}
 {% block content %}
-<h1>Observación para requerimiento #{{ ticket.id }}</h1>
-<form method="post" class="col-12 col-md-8">
-  {% csrf_token %}
-  {{ form|crispy }}
-  <button class="btn btn-primary">Agregar observación</button>
-  <a class="btn btn-secondary" href="/tickets/">Cancelar</a>
-</form>
+
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb mb-0">
+    <li class="breadcrumb-item"><a class="text-decoration-none" href="/tickets/"><i class="bi bi-list-task me-1"></i>Requerimientos</a></li>
+    <li class="breadcrumb-item active" aria-current="page">#{{ ticket.id }}</li>
+  </ol>
+</nav>
+
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-8">
+    <div class="card">
+      <div class="card-header"><h5 class="mb-0"><i class="bi bi-chat-left-text me-2"></i>Nueva observación</h5></div>
+      <div class="card-body">
+        <form method="post" class="needs-validation" novalidate>
+          {% csrf_token %}
+          {{ form|crispy }}
+          <div class="d-flex justify-content-end gap-2">
+            <a class="btn btn-secondary" href="/tickets/"><i class="bi bi-x-circle me-1"></i>Cancelar</a>
+            <button class="btn btn-primary" type="submit"><i class="bi bi-check-circle me-1"></i>Agregar observación</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}

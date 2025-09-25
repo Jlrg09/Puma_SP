@@ -35,6 +35,28 @@
   </div>
 </div>
 
+<!-- Filtros rápidos y búsqueda -->
+<div class="card mb-3">
+  <div class="card-body py-2">
+    <div class="d-flex flex-wrap align-items-center gap-2" id="notifQuickFilters">
+      <ul class="nav nav-pills small me-auto" id="notifPills">
+        <li class="nav-item me-1 mb-1"><a class="nav-link active" data-state="" href="#">Todas</a></li>
+        <li class="nav-item me-1 mb-1"><a class="nav-link" data-state="unread" href="#">Nuevas</a></li>
+        <li class="nav-item me-1 mb-1"><a class="nav-link" data-state="read" href="#">Leídas</a></li>
+      </ul>
+      <div class="input-group input-group-sm" style="max-width: 280px;">
+        <span class="input-group-text"><i class="bi bi-search"></i></span>
+        <input type="text" class="form-control" id="notifSearch" placeholder="Buscar…">
+      </div>
+    </div>
+  </div>
+  <style>
+    #notifPills .nav-link{ padding: .25rem .6rem; border-radius: 999px; color: #1f2937; background: #f3f4f6; }
+    #notifPills .nav-link:hover{ background: #e5e7eb; color: #111827; }
+    #notifPills .nav-link.active{ background: #1f4ed8; color: #fff; box-shadow: 0 4px 12px rgba(31,78,216,.2); }
+  </style>
+</div>
+
 <!-- Lista de notificaciones -->
 <div class="card shadow-sm border-0">
   <div class="card-header">
@@ -63,7 +85,7 @@
       </thead>
       <tbody>
         {% for n in notifications %}
-          <tr class="align-middle {% if not n.read_at %}table-primary-subtle{% endif %}">
+          <tr class="align-middle {% if not n.read_at %}table-primary-subtle{% endif %}" data-read="{% if n.read_at %}1{% else %}0{% endif %}">
             <td>
               <div class="d-flex align-items-start">
                 {% if not n.read_at %}
@@ -201,4 +223,96 @@
     </div>
   </div>
 </div>
+{% endblock %}
+{% block scripts %}
+<script>
+  (function(){
+    var pills = document.getElementById('notifPills');
+    var search = document.getElementById('notifSearch');
+    var tbody = document.querySelector('table tbody');
+    if (!tbody) return;
+
+    // Read current URL params
+    var params = new URLSearchParams(window.location.search);
+
+    function matchesState(tr, state){
+      var read = tr.getAttribute('data-read');
+      if (state === 'unread') return read === '0';
+      if (state === 'read') return read === '1';
+      return true;
+    }
+    function matchesQuery(tr, q){
+      if (!q) return true;
+      var text = tr.innerText.toLowerCase();
+      return text.indexOf(q) !== -1;
+    }
+    function filter(){
+      var active = pills && pills.querySelector('.nav-link.active');
+      var state = active ? (active.getAttribute('data-state') || '') : '';
+      var q = (search && search.value || '').trim().toLowerCase();
+      var rows = tbody.querySelectorAll('tr');
+      var count = 0;
+      rows.forEach(function(tr){
+        var show = matchesState(tr, state) && matchesQuery(tr, q);
+        tr.style.display = show ? '' : 'none';
+        if (show) count++;
+      });
+    }
+
+    function getActiveState(){
+      var a = pills && pills.querySelector('.nav-link.active');
+      return a ? (a.getAttribute('data-state') || '') : '';
+    }
+    function setActiveState(state){
+      if (!pills) return;
+      pills.querySelectorAll('a.nav-link').forEach(function(x){
+        x.classList.toggle('active', (x.getAttribute('data-state') || '') === state);
+      });
+    }
+    function updateURL(){
+      var state = getActiveState();
+      var q = (search && search.value || '').trim();
+      var p = new URLSearchParams(window.location.search);
+      if (state) p.set('state', state); else p.delete('state');
+      if (q) p.set('q', q); else p.delete('q');
+      var newUrl = window.location.pathname + (p.toString() ? ('?' + p.toString()) : '');
+      window.history.replaceState(null, '', newUrl);
+      // Persist across pagination by updating page links
+      document.querySelectorAll('ul.pagination a.page-link').forEach(function(a){
+        try{
+          var url = new URL(a.href, window.location.origin);
+          if (state) url.searchParams.set('state', state); else url.searchParams.delete('state');
+          if (q) url.searchParams.set('q', q); else url.searchParams.delete('q');
+          a.href = url.toString();
+        }catch(e){}
+      });
+    }
+
+    if (pills){
+      pills.addEventListener('click', function(e){
+        var a = e.target.closest('a.nav-link');
+        if (!a) return;
+        e.preventDefault();
+        pills.querySelectorAll('a.nav-link').forEach(function(x){ x.classList.remove('active'); });
+        a.classList.add('active');
+        filter();
+        updateURL();
+      });
+    }
+    if (search){
+      search.addEventListener('input', function(){
+        filter();
+        updateURL();
+      });
+    }
+
+    // Initialize from URL params (state, q)
+    var initialState = params.get('state') || '';
+    var initialQ = params.get('q') || '';
+    if (initialState){ setActiveState(initialState); }
+    if (search && initialQ){ search.value = initialQ; }
+    filter();
+    updateURL();
+  })();
+</script>
 {% endblock %}

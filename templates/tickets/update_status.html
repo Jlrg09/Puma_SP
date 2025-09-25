@@ -2,13 +2,35 @@
 {% load crispy_forms_tags %}
 {% block title %}Actualizar estado{% endblock %}
 {% block content %}
-<h1>Actualizar estado del requerimiento #{{ ticket.id }}</h1>
-<form method="post" class="col-12 col-md-6">
-  {% csrf_token %}
-  {{ form|crispy }}
-  <button class="btn btn-success">Guardar cambios</button>
-  <a class="btn btn-secondary" href="/tickets/">Cancelar</a>
-</form>
+
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb mb-0">
+    <li class="breadcrumb-item"><a class="text-decoration-none" href="/tickets/"><i class="bi bi-list-task me-1"></i>Requerimientos</a></li>
+    <li class="breadcrumb-item active" aria-current="page">#{{ ticket.id }}</li>
+  </ol>
+</nav>
+
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-7">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-arrow-repeat me-2"></i>Actualizar estado</h5>
+        <span class="badge {% if ticket.status == 'COMPLETED' %}bg-success{% elif ticket.status == 'IN_PROGRESS' %}bg-primary{% elif ticket.status == 'PENDING_SUPPLIES' %}bg-warning{% else %}bg-secondary{% endif %}">{{ ticket.get_status_display }}</span>
+      </div>
+      <div class="card-body">
+        <form method="post" class="needs-validation" novalidate>
+          {% csrf_token %}
+          {{ form|crispy }}
+          <div class="form-text mb-3"><i class="bi bi-info-circle me-1"></i>Si seleccionas "Pendiente por insumos" debes detallar los insumos en la nota.</div>
+          <div class="d-flex justify-content-end gap-2">
+            <a class="btn btn-secondary" href="/tickets/"><i class="bi bi-x-circle me-1"></i>Cancelar</a>
+            <button class="btn btn-success" type="submit"><i class="bi bi-check-circle me-1"></i>Guardar cambios</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
 <script>
   document.addEventListener('DOMContentLoaded', function() {
     const form = document.querySelector('form');

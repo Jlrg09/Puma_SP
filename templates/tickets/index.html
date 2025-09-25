@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load name_filters %}
 {% block title %}Requerimientos - Gestor de Servicios{% endblock %}
 {% block content %}
 
@@ -17,15 +18,51 @@
   {% endif %}
 </div>
 
+<!-- Filtros rápidos por estado -->
+<div class="card mb-3">
+  <div class="card-body py-2">
+    <ul class="nav nav-pills small" id="statusPills">
+      {% with s=filters.status %}
+      <li class="nav-item me-1 mb-1">
+        <a class="nav-link {% if not s %}active{% endif %}" data-status="" href="#">Todos</a>
+      </li>
+      <li class="nav-item me-1 mb-1">
+        <a class="nav-link {% if s == 'ASSIGNED' %}active{% endif %}" data-status="ASSIGNED" href="#">Asignado</a>
+      </li>
+      <li class="nav-item me-1 mb-1">
+        <a class="nav-link {% if s == 'IN_PROGRESS' %}active{% endif %}" data-status="IN_PROGRESS" href="#">En progreso</a>
+      </li>
+      <li class="nav-item me-1 mb-1">
+        <a class="nav-link {% if s == 'PENDING_SUPPLIES' %}active{% endif %}" data-status="PENDING_SUPPLIES" href="#">Pendiente</a>
+      </li>
+      <li class="nav-item me-1 mb-1">
+        <a class="nav-link {% if s == 'COMPLETED' %}active{% endif %}" data-status="COMPLETED" href="#">Completado</a>
+      </li>
+      {% endwith %}
+    </ul>
+  </div>
+  <style>
+    /* Compact pills look */
+    #statusPills .nav-link{ padding: .25rem .6rem; border-radius: 999px; color: #1f2937; background: #f3f4f6; }
+    #statusPills .nav-link:hover{ background: #e5e7eb; color: #111827; }
+    #statusPills .nav-link.active{ box-shadow: 0 4px 12px rgba(31,78,216,.2); background: #1f4ed8; color: #ffffff; }
+  </style>
+</div>
+
 <!-- Panel de filtros -->
 <div class="card mb-4">
-  <div class="card-header">
+  <div class="card-header d-flex justify-content-between align-items-center">
     <h5 class="mb-0">
-      <i class="bi bi-funnel me-2"></i>Filtros
+      <i class="bi bi-funnel me-2"></i>Filtros avanzados
     </h5>
+    <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#advancedFilters" aria-expanded="{% if filters.q or filters.priority or filters.office or filters.tech %}true{% else %}false{% endif %}" aria-controls="advancedFilters">
+      <i class="bi bi-sliders me-1"></i> {% if filters.q or filters.priority or filters.office or filters.tech %}Ocultar{% else %}Mostrar{% endif %}
+    </button>
   </div>
+  <div id="advancedFilters" class="collapse {% if filters.q or filters.priority or filters.office or filters.tech %}show{% endif %}">
   <div class="card-body">
     <form method="get">
+      <input type="hidden" name="sort" value="{{ filters.sort }}">
       <div class="row g-3">
         <div class="col-12 col-md-6 col-lg-3">
           <label class="form-label fw-medium">Buscar</label>
@@ -75,8 +112,9 @@
           <label class="form-label fw-medium">Técnico</label>
           <select class="form-select" name="tech">
             <option value="">Todos</option>
+            
             {% for u in tecnicos %}
-              <option value="{{ u.id }}" {% if filters.tech == u.id %}selected{% endif %}>{{ u.username }}</option>
+              <option value="{{ u.id }}" {% if filters.tech == u.id %}selected{% endif %}>{{ u|first_last }}</option>
             {% endfor %}
           </select>
         </div>
@@ -100,6 +138,7 @@
       </div>
     </form>
   </div>
+  </div>
 </div>
 
 <!-- Tabla de requerimientos -->
@@ -109,9 +148,51 @@
       <h5 class="mb-0">
         <i class="bi bi-table me-2"></i>Lista de Requerimientos
       </h5>
-      <small class="text-muted">
-        <i class="bi bi-arrow-clockwise me-1"></i>Actualización automática
-      </small>
+      <div class="d-flex align-items-center gap-3">
+        <!-- Sorting dropdown -->
+        <div class="dropdown">
+          <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-sort-down me-1"></i>
+            {% if filters.sort == '-created_at' %}Más reciente
+            {% elif filters.sort == 'created_at' %}Más antiguo
+            {% elif filters.sort == '-updated_at' %}Recién actualizado
+            {% elif filters.sort == 'updated_at' %}Menos actualizado
+            {% elif filters.sort == '-priority' %}Prioridad alta
+            {% elif filters.sort == 'priority' %}Prioridad baja
+            {% elif filters.sort == 'status' %}Estado A-Z
+            {% elif filters.sort == '-status' %}Estado Z-A
+            {% else %}Más reciente{% endif %}
+          </button>
+          <ul class="dropdown-menu">
+            <li><h6 class="dropdown-header"><i class="bi bi-calendar me-1"></i>Por Fecha</h6></li>
+            <li><a class="dropdown-item {% if filters.sort == '-created_at' %}active{% endif %}" href="#" data-sort="-created_at">
+              <i class="bi bi-sort-down-alt me-2"></i>Más reciente primero
+            </a></li>
+            <li><a class="dropdown-item {% if filters.sort == 'created_at' %}active{% endif %}" href="#" data-sort="created_at">
+              <i class="bi bi-sort-up-alt me-2"></i>Más antiguo primero
+            </a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><h6 class="dropdown-header"><i class="bi bi-arrow-repeat me-1"></i>Por Actualización</h6></li>
+            <li><a class="dropdown-item {% if filters.sort == '-updated_at' %}active{% endif %}" href="#" data-sort="-updated_at">
+              <i class="bi bi-clock-history me-2"></i>Recién actualizado
+            </a></li>
+            <li><a class="dropdown-item {% if filters.sort == 'updated_at' %}active{% endif %}" href="#" data-sort="updated_at">
+              <i class="bi bi-clock me-2"></i>Menos actualizado
+            </a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><h6 class="dropdown-header"><i class="bi bi-exclamation-triangle me-1"></i>Por Prioridad</h6></li>
+            <li><a class="dropdown-item {% if filters.sort == '-priority' %}active{% endif %}" href="#" data-sort="-priority">
+              <i class="bi bi-arrow-up me-2"></i>Prioridad alta primero
+            </a></li>
+            <li><a class="dropdown-item {% if filters.sort == 'priority' %}active{% endif %}" href="#" data-sort="priority">
+              <i class="bi bi-arrow-down me-2"></i>Prioridad baja primero
+            </a></li>
+          </ul>
+        </div>
+        <small class="text-muted">
+          <i class="bi bi-arrow-clockwise me-1"></i>Actualización automática
+        </small>
+      </div>
     </div>
   </div>
   
@@ -121,8 +202,9 @@
         <tr>
           <th scope="col" class="text-center">ID</th>
           <th scope="col">Solicitante</th>
-          <th scope="col">Oficina Origen</th>
-          <th scope="col">Oficina Asignada</th>
+          <th scope="col">Origen</th>
+          <th scope="col">Asignada</th>
+          <th scope="col" class="text-center">Fecha</th>
           <th scope="col" class="text-center">Prioridad</th>
           <th scope="col" class="text-center">Estado</th>
           <th scope="col">Técnico</th>
@@ -151,7 +233,7 @@
           <div class="d-flex align-items-center p-3 bg-light rounded">
             <i class="bi bi-person-badge text-primary me-3" style="font-size: 1.5rem;"></i>
             <div>
-              <h6 class="mb-0 fw-bold">{{ u.username }}</h6>
+              <h6 class="mb-0 fw-bold">{{ u|first_last }}</h6>
               <small class="text-muted">{{ u.asignados }} requerimiento{{ u.asignados|pluralize }}</small>
             </div>
           </div>
@@ -169,7 +251,7 @@
     <ul class="pagination pagination-lg">
       {% if tickets.has_previous %}
         <li class="page-item">
-          <a class="page-link" href="?page={{ tickets.previous_page_number }}&status={{ filters.status }}&priority={{ filters.priority }}&office={{ filters.office }}&tech={{ filters.tech }}&q={{ filters.q }}">
+          <a class="page-link" href="?page={{ tickets.previous_page_number }}&status={{ filters.status }}&priority={{ filters.priority }}&office={{ filters.office }}&tech={{ filters.tech }}&q={{ filters.q }}&sort={{ filters.sort }}">
             <i class="bi bi-chevron-left"></i>
           </a>
         </li>
@@ -189,7 +271,7 @@
       
       {% if tickets.has_next %}
         <li class="page-item">
-          <a class="page-link" href="?page={{ tickets.next_page_number }}&status={{ filters.status }}&priority={{ filters.priority }}&office={{ filters.office }}&tech={{ filters.tech }}&q={{ filters.q }}">
+          <a class="page-link" href="?page={{ tickets.next_page_number }}&status={{ filters.status }}&priority={{ filters.priority }}&office={{ filters.office }}&tech={{ filters.tech }}&q={{ filters.q }}&sort={{ filters.sort }}">
             <i class="bi bi-chevron-right"></i>
           </a>
         </li>
@@ -206,6 +288,41 @@
 {% endif %}
 <script>
   (function(){
+    // Quick status pills behavior
+    var pills = document.getElementById('statusPills');
+    if (pills) {
+      pills.addEventListener('click', function(e){
+        var a = e.target.closest('a.nav-link[data-status]');
+        if (!a) return;
+        e.preventDefault();
+        var status = a.getAttribute('data-status') || '';
+        var params = new URLSearchParams(window.location.search);
+        if (status) params.set('status', status); else params.delete('status');
+        // reset pagination when filter changes
+        params.delete('page');
+        window.location.search = params.toString();
+      });
+    }
+
+    // Sorting functionality
+    function initSorting() {
+      var sortLinks = document.querySelectorAll('[data-sort]');
+      sortLinks.forEach(function(link) {
+        link.addEventListener('click', function(e) {
+          e.preventDefault();
+          var sortValue = this.getAttribute('data-sort');
+          var params = new URLSearchParams(window.location.search);
+          params.set('sort', sortValue);
+          // Reset pagination when sorting changes
+          params.delete('page');
+          window.location.search = params.toString();
+        });
+      });
+    }
+
+    // Initialize everything
+    initSorting();
+
     // Live update via WS
     function reloadTbody(){
       var params = new URLSearchParams(window.location.search);
@@ -264,4 +381,8 @@
     })();
   })();
   </script>
+  <style>
+    /* Slightly denser table for better scanability */
+    .table td, .table th { padding: .75rem 1rem; }
+  </style>
 {% endblock %}

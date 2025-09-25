@@ -1,82 +1,125 @@
 {% extends 'base.html' %}
+{% load name_filters %}
 {% block title %}Oficinas{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center">
-  <h1>Oficinas</h1>
-  {% if request.user.is_authenticated and request.user.is_jefe %}
-    <a class="btn btn-primary" href="/oficinas/crear/">Crear oficina</a>
-  {% endif %}
-  </div>
 
-<form method="get" class="row g-2 mt-3 mb-3">
-  <div class="col-12 col-md-4">
-    <input class="form-control" type="text" name="q" placeholder="Buscar" value="{{ filters.q }}">
+<!-- Header -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h1 class="page-title mb-1"><i class="bi bi-building me-2"></i>Oficinas</h1>
+    <p class="text-muted mb-0">Gestiona y asigna supervisores a las oficinas</p>
   </div>
-  <div class="col-12 col-md-4">
-    <select name="supervisor" class="form-select">
-      <option value="">Supervisor</option>
-      {% for s in supervisors %}
-        <option value="{{ s.id }}" {% if filters.supervisor == s.id %}selected{% endif %}>{{ s.username }}</option>
-      {% endfor %}
-    </select>
+  {% if request.user.is_authenticated and request.user.is_jefe %}
+    <a class="btn btn-primary" href="/oficinas/crear/"><i class="bi bi-plus-circle me-2"></i>Nueva oficina</a>
+  {% endif %}
+</div>
+
+<!-- Advanced filters (collapsible) -->
+<div class="card mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h5 class="mb-0"><i class="bi bi-funnel me-2"></i>Filtros</h5>
+    <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#officeFilters" aria-expanded="{% if filters.q or filters.supervisor %}true{% else %}false{% endif %}" aria-controls="officeFilters">
+      <i class="bi bi-sliders"></i> {% if filters.q or filters.supervisor %}Ocultar{% else %}Mostrar{% endif %}
+    </button>
   </div>
-  <div class="col-12 col-md-4">
-    <button class="btn btn-outline-secondary">Filtrar</button>
-    <a class="btn btn-link" href="/oficinas/">Limpiar</a>
+  <div id="officeFilters" class="collapse {% if filters.q or filters.supervisor %}show{% endif %}">
+    <div class="card-body">
+      <form method="get">
+        <div class="row g-3">
+          <div class="col-12 col-md-5">
+            <label class="form-label fw-medium">Buscar</label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-search"></i></span>
+              <input class="form-control" type="text" name="q" placeholder="Nombre de oficina" value="{{ filters.q }}">
+            </div>
+          </div>
+          <div class="col-12 col-md-5">
+            <label class="form-label fw-medium">Supervisor</label>
+            <select name="supervisor" class="form-select">
+              <option value="">Todos</option>
+              {% for s in supervisors %}
+                <option value="{{ s.id }}" {% if filters.supervisor == s.id %}selected{% endif %}>{{ s|first_last }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-12 col-md-2 d-flex align-items-end">
+            <div class="d-grid w-100">
+              <button class="btn btn-primary" type="submit"><i class="bi bi-funnel-fill me-1"></i>Aplicar</button>
+              <a class="btn btn-link mt-1 p-0" href="/oficinas/">Limpiar filtros</a>
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
   </div>
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-</form>
-<table class="table table-striped mt-3">
-  <thead>
-    <tr><th>Nombre</th><th>Supervisor</th><th>Acciones</th></tr>
-  </thead>
-  <tbody>
-    {% for o in offices %}
-      <tr>
-        <td>{{ o.name }}</td>
-        <td>{{ o.supervisor }}</td>
-        <td>
-          {% if request.user.is_authenticated and request.user.is_jefe %}
-            <a class="btn btn-sm btn-outline-primary" href="/oficinas/{{o.id}}/editar/">Editar</a>
-            <a class="btn btn-sm btn-outline-danger" href="/oficinas/{{o.id}}/eliminar/">Eliminar</a>
-          {% else %}
-            <span class="text-muted">—</span>
-          {% endif %}
-        </td>
-      </tr>
-    {% empty %}
-      <tr><td colspan="3" class="text-muted">No hay oficinas.</td></tr>
-    {% endfor %}
-  </tbody>
-</table>
+</div>
+
+<!-- Offices table -->
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0 align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>Nombre</th>
+          <th>Supervisor</th>
+          <th class="text-center">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for o in offices %}
+          <tr>
+            <td class="fw-semibold">{{ o.name }}</td>
+            <td>
+              {% if o.supervisor %}
+                <span class="badge bg-primary-subtle text-primary" title="@{{ o.supervisor.username }}"><i class="bi bi-person-badge me-1"></i>{{ o.supervisor|first_last }}</span>
+              {% else %}
+                <span class="badge bg-secondary-subtle text-secondary">Sin asignar</span>
+              {% endif %}
+            </td>
+            <td class="text-center">
+              {% if request.user.is_authenticated and request.user.is_jefe %}
+                <div class="btn-group btn-group-sm" role="group">
+                  <a class="btn btn-outline-primary" href="/oficinas/{{o.id}}/editar/" title="Editar"><i class="bi bi-pencil"></i></a>
+                  <a class="btn btn-outline-danger" href="/oficinas/{{o.id}}/eliminar/" title="Eliminar"><i class="bi bi-trash"></i></a>
+                </div>
+              {% else %}
+                <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="3" class="text-center py-5">
+              <div class="empty-state">
+                <i class="bi bi-building"></i>
+                <p class="mb-0">No hay oficinas para mostrar.</p>
+                <small class="text-muted">Ajusta los filtros o crea una nueva oficina.</small>
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
 {% if offices.paginator.num_pages > 1 %}
-<nav aria-label="Paginación" class="mt-3">
-  <ul class="pagination">
-    {% if offices.has_previous %}
-      <li class="page-item"><a class="page-link" href="?page={{ offices.previous_page_number }}&q={{ filters.q }}&supervisor={{ filters.supervisor }}">Anterior</a></li>
-    {% else %}
-      <li class="page-item disabled"><span class="page-link">Anterior</span></li>
-    {% endif %}
-    <li class="page-item disabled"><span class="page-link">Página {{ offices.number }} de {{ offices.paginator.num_pages }}</span></li>
-    {% if offices.has_next %}
-      <li class="page-item"><a class="page-link" href="?page={{ offices.next_page_number }}&q={{ filters.q }}&supervisor={{ filters.supervisor }}">Siguiente</a></li>
-    {% else %}
-      <li class="page-item disabled"><span class="page-link">Siguiente</span></li>
-    {% endif %}
-  </ul>
+<nav aria-label="Paginación" class="mt-4">
+  <div class="d-flex justify-content-center">
+    <ul class="pagination pagination-lg">
+      {% if offices.has_previous %}
+        <li class="page-item"><a class="page-link" href="?page={{ offices.previous_page_number }}&q={{ filters.q }}&supervisor={{ filters.supervisor }}"><i class="bi bi-chevron-left"></i></a></li>
+      {% else %}
+        <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-left"></i></span></li>
+      {% endif %}
+      <li class="page-item active"><span class="page-link">{{ offices.number }} de {{ offices.paginator.num_pages }}</span></li>
+      {% if offices.has_next %}
+        <li class="page-item"><a class="page-link" href="?page={{ offices.next_page_number }}&q={{ filters.q }}&supervisor={{ filters.supervisor }}"><i class="bi bi-chevron-right"></i></a></li>
+      {% else %}
+        <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-right"></i></span></li>
+      {% endif %}
+    </ul>
+  </div>
 </nav>
 {% endif %}
 {% endblock %}

@@ -55,7 +55,23 @@ def index(request):
 	if q:
 		qs = qs.filter(models.Q(requester_name__icontains=q) | models.Q(description__icontains=q))
 
-	qs = qs.order_by('-created_at')
+	# Sorting
+	sort_by = request.GET.get('sort', '-created_at')  # Default: newest first
+	valid_sorts = [
+		'-created_at',  # Newest first
+		'created_at',   # Oldest first
+		'-updated_at',  # Recently updated first
+		'updated_at',   # Least recently updated first
+		'-priority',    # High priority first
+		'priority',     # Low priority first
+		'status',       # Status alphabetical
+		'-status'       # Status reverse alphabetical
+	]
+	
+	if sort_by in valid_sorts:
+		qs = qs.order_by(sort_by)
+	else:
+		qs = qs.order_by('-created_at')
 
 	# Pagination
 	page = request.GET.get('page', 1)
@@ -86,6 +102,7 @@ def index(request):
 			'office': int(office) if office else '',
 			'tech': int(tech) if tech else '',
 			'q': q or '',
+			'sort': sort_by,
 		},
 		'tecnicos': tecnicos,
 		'offices': offices,

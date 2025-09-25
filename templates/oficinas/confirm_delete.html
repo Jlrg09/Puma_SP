@@ -1,11 +1,42 @@
 {% extends 'base.html' %}
 {% block title %}Eliminar oficina{% endblock %}
 {% block content %}
-<h1>Eliminar oficina</h1>
-<p>¿Seguro que deseas eliminar la oficina <strong>{{ office.name }}</strong>?</p>
-<form method="post">
-  {% csrf_token %}
-  <button class="btn btn-danger">Sí, eliminar</button>
-  <a class="btn btn-secondary" href="/oficinas/">Cancelar</a>
-</form>
+
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="mb-4">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item">
+      <a href="/" class="text-decoration-none">
+        <i class="bi bi-house me-1"></i>Inicio
+      </a>
+    </li>
+    <li class="breadcrumb-item"><a href="/oficinas/" class="text-decoration-none">Oficinas</a></li>
+    <li class="breadcrumb-item active" aria-current="page">Eliminar oficina</li>
+  </ol>
+</nav>
+
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-8">
+    <div class="card shadow-sm border-0">
+      <div class="card-header bg-danger text-white">
+        <h5 class="mb-0"><i class="bi bi-trash me-2"></i>Confirmar eliminación</h5>
+      </div>
+      <div class="card-body">
+        <p class="mb-0">¿Seguro que deseas eliminar la oficina <strong>{{ office.name }}</strong>? Esta acción no se puede deshacer.</p>
+      </div>
+      <div class="card-footer d-flex justify-content-end gap-2">
+        <a class="btn btn-outline-secondary" href="/oficinas/">
+          <i class="bi bi-x-circle me-1"></i>Cancelar
+        </a>
+        <form method="post" class="d-inline">
+          {% csrf_token %}
+          <button class="btn btn-danger">
+            <i class="bi bi-trash me-1"></i>Sí, eliminar
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
 {% endblock %}

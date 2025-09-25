@@ -1,8 +1,39 @@
 {% extends 'base.html' %}
 {% block title %}Permiso denegado{% endblock %}
 {% block content %}
-  <div class="alert alert-warning">
-    <h1 class="h4">No tienes permisos para esta acción</h1>
-    <p>Si necesitas acceso, contacta al Jefe del sistema.</p>
+
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="mb-4">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item">
+      <a href="/" class="text-decoration-none">
+        <i class="bi bi-house me-1"></i>Inicio
+      </a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page">Permiso denegado</li>
+  </ol>
+</nav>
+
+<div class="row justify-content-center">
+  <div class="col-12 col-md-10 col-lg-8">
+    <div class="card border-0 shadow-lg">
+      <div class="card-body p-5 text-center">
+        <div class="mb-3">
+          <i class="bi bi-shield-exclamation text-danger" style="font-size: 4rem;"></i>
+        </div>
+        <h1 class="h3 fw-bold">No tienes permisos para esta acción</h1>
+        <p class="text-muted mb-4">Si necesitas acceso, contacta al Jefe del sistema.</p>
+        <div class="d-flex justify-content-center gap-2">
+          <button class="btn btn-secondary" onclick="window.history.back()">
+            <i class="bi bi-arrow-left me-2"></i>Volver
+          </button>
+          <a href="/" class="btn btn-outline-primary">
+            <i class="bi bi-house me-2"></i>Ir al inicio
+          </a>
+        </div>
+      </div>
+    </div>
   </div>
+</div>
+
 {% endblock %}
