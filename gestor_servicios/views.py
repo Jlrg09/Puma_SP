@@ -187,6 +187,35 @@ def my_stats(request):
             context['top_tecnico'] = None
             context['top_tecnico_total'] = 0
             
+        # Información adicional para supervisor
+        if user.office:
+            # Tickets del día para la oficina
+            from datetime import date
+            today = date.today()
+            context['tickets_hoy_oficina'] = qs.filter(created_at__date=today).count()
+            
+            # Tickets urgentes de la oficina
+            context['tickets_urgentes_oficina'] = qs.filter(
+                priority__in=[TicketPriority.P4, TicketPriority.P5],  # Alta y Urgente
+                status__in=['DRAFT', 'ASSIGNED', 'IN_PROGRESS']
+            ).count()
+            
+            # Lista de técnicos con sus estadísticas básicas
+            tecnicos_stats = []
+            tecnicos_oficina = CustomUser.objects.filter(office=user.office, role='TECNICO')
+            for tecnico in tecnicos_oficina:
+                tecnico_tickets = Ticket.objects.filter(technician=tecnico)
+                tecnicos_stats.append({
+                    'tecnico': tecnico,
+                    'asignados': tecnico_tickets.count(),
+                    'completados': tecnico_tickets.filter(status='COMPLETED').count(),
+                    'en_progreso': tecnico_tickets.filter(status='IN_PROGRESS').count()
+                })
+            context['tecnicos_stats'] = tecnicos_stats
+            
+            # Últimos tickets asignados a la oficina
+            context['ultimos_tickets_oficina'] = qs.select_related('technician').order_by('-created_at')[:5]
+            
     elif user.is_tecnico:
         context['role'] = 'TECNICO'
         qs = Ticket.objects.filter(technician=user)
@@ -201,6 +230,37 @@ def my_stats(request):
         context['completados'] = qs.filter(status='COMPLETED').count()
         context['pendientes_insumos'] = qs.filter(status='PENDING_SUPPLIES').count()
         stats_payload['completados'] = context['completados']
+        
+        # Información de oficina del técnico
+        context['oficina'] = user.office
+        if user.office:
+            context['office_id'] = user.office.id
+            # Compañeros técnicos en la misma oficina
+            context['companeros_tecnicos'] = CustomUser.objects.filter(
+                office=user.office, 
+                role='TECNICO'
+            ).exclude(id=user.id).count()
+            # Supervisor de la oficina
+            context['supervisor_oficina'] = user.office.supervisor
+        else:
+            context['office_id'] = None
+            context['companeros_tecnicos'] = 0
+            context['supervisor_oficina'] = None
+        
+        # Tickets del día actual (creados hoy)
+        from datetime import date
+        today = date.today()
+        context['tickets_hoy'] = qs.filter(created_at__date=today).count()
+        
+        # Tickets urgentes asignados al técnico (sin completar)
+        from tickets.models import TicketPriority
+        context['tickets_urgentes'] = qs.filter(
+            priority__in=[TicketPriority.P4, TicketPriority.P5],  # Alta y Urgente
+            status__in=['DRAFT', 'ASSIGNED', 'IN_PROGRESS']
+        ).count()
+        
+        # Últimos 3 tickets asignados
+        context['ultimos_tickets'] = qs.select_related('assigned_office').order_by('-created_at')[:3]
     else:
         context['role'] = 'NONE'
         # Sin rol asignado

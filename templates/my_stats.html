@@ -81,6 +81,25 @@
     border-radius: 12px;
     margin-bottom: 1rem;
   }
+  
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+  
+  .badge-sm {
+    font-size: 0.7rem;
+  }
+  
+  .tech-card {
+    transition: transform 0.2s ease;
+  }
+  
+  .tech-card:hover {
+    transform: translateY(-2px);
+  }
 </style>
 {% endblock %}
 
@@ -427,6 +446,14 @@
             <div class="fw-bold fs-4 text-success">{{ asignados_oficina }}</div>
             <small class="text-muted">Total Req.</small>
           </div>
+          <div class="text-center">
+            <div class="fw-bold fs-4 text-warning">{{ tickets_hoy_oficina|default:0 }}</div>
+            <small class="text-muted">Hoy</small>
+          </div>
+          <div class="text-center">
+            <div class="fw-bold fs-4 text-danger">{{ tickets_urgentes_oficina|default:0 }}</div>
+            <small class="text-muted">Urgentes</small>
+          </div>
         </div>
       </div>
     </div>
@@ -574,7 +601,163 @@
       </div>
     </div>
   </div>
+
+  <!-- Estadísticas de técnicos bajo supervisión -->
+  {% if tecnicos_stats %}
+    <div class="row g-4 mt-2">
+      <div class="col-12 col-lg-8">
+        <div class="chart-card">
+          <div class="card-header bg-white border-bottom-0 pb-0">
+            <h5 class="mb-0">
+              <i class="bi bi-people-fill me-2 text-primary"></i>
+              Técnicos de mi Oficina
+            </h5>
+          </div>
+          <div class="card-body">
+            <div class="row g-3">
+              {% for tecnico_stat in tecnicos_stats %}
+                <div class="col-12 col-md-6">
+                  <div class="bg-light rounded-3 p-3">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                      <div>
+                        <h6 class="mb-0">{{ tecnico_stat.tecnico.get_full_name|default:tecnico_stat.tecnico.username }}</h6>
+                        <small class="text-muted">@{{ tecnico_stat.tecnico.username }}</small>
+                      </div>
+                      <div class="text-end">
+                        <span class="badge bg-primary">{{ tecnico_stat.asignados }} total</span>
+                      </div>
+                    </div>
+                    <div class="row g-2 text-center">
+                      <div class="col-4">
+                        <div class="bg-white rounded-2 p-2">
+                          <div class="fw-bold text-success">{{ tecnico_stat.completados }}</div>
+                          <small class="text-muted">Hechos</small>
+                        </div>
+                      </div>
+                      <div class="col-4">
+                        <div class="bg-white rounded-2 p-2">
+                          <div class="fw-bold text-warning">{{ tecnico_stat.en_progreso }}</div>
+                          <small class="text-muted">En curso</small>
+                        </div>
+                      </div>
+                      <div class="col-4">
+                        <div class="bg-white rounded-2 p-2">
+                          <div class="fw-bold text-primary">
+                            {% if tecnico_stat.asignados > 0 %}
+                              {% widthratio tecnico_stat.completados tecnico_stat.asignados 100 %}%
+                            {% else %}
+                              0%
+                            {% endif %}
+                          </div>
+                          <small class="text-muted">Tasa</small>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Últimos tickets de la oficina -->
+      <div class="col-12 col-lg-4">
+        <div class="chart-card">
+          <div class="card-header bg-white border-bottom-0 pb-0">
+            <h5 class="mb-0">
+              <i class="bi bi-clock-history me-2 text-primary"></i>
+              Últimos de la Oficina
+            </h5>
+          </div>
+          <div class="card-body">
+            {% if ultimos_tickets_oficina %}
+              <div class="list-group list-group-flush">
+                {% for ticket in ultimos_tickets_oficina %}
+                  <div class="list-group-item border-0 px-0 py-2">
+                    <div class="d-flex align-items-start justify-content-between">
+                      <div class="flex-grow-1">
+                        <div class="d-flex align-items-center mb-1">
+                          <span class="badge 
+                            {% if ticket.status == 'DRAFT' %}bg-secondary
+                            {% elif ticket.status == 'ASSIGNED' %}bg-primary
+                            {% elif ticket.status == 'IN_PROGRESS' %}bg-warning
+                            {% elif ticket.status == 'PENDING_SUPPLIES' %}bg-info
+                            {% elif ticket.status == 'COMPLETED' %}bg-success
+                            {% endif %} badge-sm me-1">
+                            {{ ticket.get_status_display|truncatechars:10 }}
+                          </span>
+                        </div>
+                        <h6 class="mb-1 fs-6">{{ ticket.requester_name|truncatechars:20 }}</h6>
+                        <p class="mb-1 text-muted small">{{ ticket.description|truncatechars:40 }}</p>
+                        {% if ticket.technician %}
+                          <small class="text-muted">
+                            <i class="bi bi-person me-1"></i>{{ ticket.technician.get_full_name|default:ticket.technician.username|truncatechars:15 }}
+                          </small>
+                        {% endif %}
+                      </div>
+                    </div>
+                  </div>
+                {% endfor %}
+              </div>
+            {% else %}
+              <div class="text-center py-4">
+                <i class="bi bi-inbox text-muted mb-2" style="font-size: 2rem;"></i>
+                <p class="text-muted mb-0">Sin tickets recientes</p>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  {% endif %}
 {% elif request.user.is_tecnico %}
+  <!-- Header de información de oficina del técnico -->
+  {% if oficina %}
+    <div class="metric-comparison mb-4">
+      <div class="row align-items-center">
+        <div class="col-md-6">
+          <div class="d-flex align-items-center">
+            <i class="bi bi-building-fill text-primary me-3" style="font-size: 2rem;"></i>
+            <div>
+              <h5 class="mb-1 fw-bold">{{ oficina.name }}</h5>
+              <small class="text-muted">Mi oficina</small>
+              {% if supervisor_oficina %}
+                <div class="mt-1">
+                  <small class="text-muted">
+                    <i class="bi bi-person-badge me-1"></i>
+                    Supervisor: {{ supervisor_oficina.get_full_name|default:supervisor_oficina.username }}
+                  </small>
+                </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6 text-md-end">
+          <div class="d-flex justify-content-md-end gap-4">
+            <div class="text-center">
+              <div class="fw-bold fs-4 text-info">{{ companeros_tecnicos }}</div>
+              <small class="text-muted">Compañeros</small>
+            </div>
+            <div class="text-center">
+              <div class="fw-bold fs-4 text-warning">{{ tickets_hoy }}</div>
+              <small class="text-muted">Hoy</small>
+            </div>
+            <div class="text-center">
+              <div class="fw-bold fs-4 text-danger">{{ tickets_urgentes }}</div>
+              <small class="text-muted">Urgentes</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  {% else %}
+    <div class="alert alert-warning border-0 shadow-sm rounded-3 mb-4">
+      <i class="bi bi-exclamation-triangle me-2"></i>
+      No tienes una oficina asignada. Contacta con tu supervisor para que te asigne a una oficina.
+    </div>
+  {% endif %}
+
   <!-- Métricas del técnico -->
   <div class="row g-4 mb-4">
     <div class="col-12 col-md-6 col-xl-3">
@@ -619,6 +802,50 @@
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- Fila adicional de métricas para técnico -->
+  <div class="row g-4 mb-4">
+    <div class="col-12 col-md-6 col-xl-3">
+      <div class="stat-card">
+        <div class="card-body position-relative p-4">
+          <i class="bi bi-exclamation-triangle-fill stat-icon text-danger"></i>
+          <div class="stat-value text-danger">{{ tickets_urgentes }}</div>
+          <div class="stat-label">Urgentes Pendientes</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-md-6 col-xl-3">
+      <div class="stat-card">
+        <div class="card-body position-relative p-4">
+          <i class="bi bi-calendar-day stat-icon text-primary"></i>
+          <div class="stat-value text-primary">{{ tickets_hoy }}</div>
+          <div class="stat-label">Recibidos Hoy</div>
+        </div>
+      </div>
+    </div>
+    {% if oficina %}
+      <div class="col-12 col-md-6 col-xl-3">
+        <div class="stat-card">
+          <div class="card-body position-relative p-4">
+            <i class="bi bi-people-fill stat-icon text-info"></i>
+            <div class="stat-value text-info">{{ companeros_tecnicos }}</div>
+            <div class="stat-label">Compañeros de Oficina</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-12 col-md-6 col-xl-3">
+        <div class="stat-card">
+          <div class="card-body position-relative p-4">
+            <i class="bi bi-building stat-icon text-success"></i>
+            <div class="stat-value text-success">
+              <small style="font-size: 1.5rem;">{{ oficina.name|truncatechars:8 }}</small>
+            </div>
+            <div class="stat-label">Mi Oficina</div>
+          </div>
+        </div>
+      </div>
+    {% endif %}
   </div>
 
   <!-- Gráfico de estados del técnico -->
@@ -768,6 +995,71 @@
       </div>
     </div>
   </div>
+
+  <!-- Últimos tickets asignados -->
+  {% if ultimos_tickets %}
+    <div class="row g-4 mt-2">
+      <div class="col-12">
+        <div class="chart-card">
+          <div class="card-header bg-white border-bottom-0 pb-0">
+            <div class="d-flex align-items-center justify-content-between">
+              <h5 class="mb-0">
+                <i class="bi bi-clock-history me-2 text-primary"></i>
+                Últimos Requerimientos Asignados
+              </h5>
+              <a href="/tickets/" class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-arrow-right me-1"></i>Ver todos
+              </a>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="list-group list-group-flush">
+              {% for ticket in ultimos_tickets %}
+                <div class="list-group-item border-0 px-0">
+                  <div class="d-flex align-items-center justify-content-between">
+                    <div class="flex-grow-1">
+                      <div class="d-flex align-items-center mb-1">
+                        <span class="badge 
+                          {% if ticket.status == 'DRAFT' %}bg-secondary
+                          {% elif ticket.status == 'ASSIGNED' %}bg-primary
+                          {% elif ticket.status == 'IN_PROGRESS' %}bg-warning
+                          {% elif ticket.status == 'PENDING_SUPPLIES' %}bg-info
+                          {% elif ticket.status == 'COMPLETED' %}bg-success
+                          {% endif %} me-2">
+                          {{ ticket.get_status_display }}
+                        </span>
+                        <span class="badge 
+                          {% if ticket.priority == 5 %}bg-danger
+                          {% elif ticket.priority == 4 %}bg-warning
+                          {% elif ticket.priority == 3 %}bg-info
+                          {% else %}bg-secondary
+                          {% endif %} me-2">
+                          {{ ticket.get_priority_display }}
+                        </span>
+                        <small class="text-muted">{{ ticket.created_at|date:"d/m/Y H:i" }}</small>
+                      </div>
+                      <h6 class="mb-1">{{ ticket.requester_name }}</h6>
+                      <p class="mb-1 text-muted">{{ ticket.description|truncatechars:80 }}</p>
+                      {% if ticket.assigned_office %}
+                        <small class="text-muted">
+                          <i class="bi bi-building me-1"></i>{{ ticket.assigned_office.name }}
+                        </small>
+                      {% endif %}
+                    </div>
+                    <div class="text-end">
+                      <a href="/tickets/{{ ticket.id }}/" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-eye"></i>
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  {% endif %}
 {% else %}
   <!-- Contenido por defecto para usuarios sin rol específico -->
   <div class="text-center py-5">

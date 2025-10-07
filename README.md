@@ -33,6 +33,45 @@ Copy-Item .env.example .env
 & ".\.venv\Scripts\python.exe" manage.py runserver
 ```
 
+### Ejecutar con Daphne (ASGI) — recomendado para Channels / WebSockets
+
+Si tu proyecto usa Django Channels o necesitas probar WebSockets de forma realista,
+usa Daphne (servidor ASGI). En desarrollo puedes ejecutarlo así:
+
+```
+.venv\Scripts\daphne.exe -b 127.0.0.1 -p 8000 gestor_servicios.asgi:application
+```
+
+Notas importantes relacionadas con ngrok y CSRF
+- Para exponer el servidor local con ngrok y evitar errores CSRF (Origin checking failed)
+	añade tus hostnames ngrok a la variable `NGROK_HOSTS` en el archivo `.env`:
+
+```
+NGROK_HOSTS=e4921ef9954a.ngrok-free.app
+```
+
+- El proyecto incluye soporte en `settings.py` para:
+	- añadir `'.ngrok-free.app'` a `ALLOWED_HOSTS` cuando `DEBUG=1` y `ALLOW_NGROK=1` (por defecto),
+	- poblar `CSRF_TRUSTED_ORIGINS` desde `NGROK_HOSTS` (se crea el origen con https://... automáticamente),
+	- valores por defecto de desarrollo: `http://localhost` y `http://127.0.0.1` se añaden a `CSRF_TRUSTED_ORIGINS`.
+
+- Si prefieres **no** permitir ngrok automáticamente, añade a `.env`:
+```
+ALLOW_NGROK=0
+```
+
+- Si por alguna razón quieres desactivar la comprobación CSRF en desarrollo (no recomendado),
+	puedes usar la variable `DISABLE_CSRF=1` en `.env`. Esto removerá `CsrfViewMiddleware` cuando
+	`DEBUG=1`. **No usar en entornos públicos ni producción.**
+
+Verificación rápida (shell):
+```
+& .\.venv\Scripts\Activate.ps1
+python manage.py shell
+>>> from django.conf import settings
+>>> settings.CSRF_TRUSTED_ORIGINS
+```
+
 ## Flujo de roles
 - Registro: el usuario queda "pendiente" (approved=false) y sólo puede ver la pantalla de espera.
 - Jefe: aprueba usuarios, asigna roles y oficinas, crea oficinas y tickets. Puede editar/eliminar oficinas y usuarios.

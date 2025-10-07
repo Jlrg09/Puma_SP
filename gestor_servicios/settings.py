@@ -32,6 +32,22 @@ DEBUG = os.getenv('DEBUG', '1') == '1'
 
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',') if os.getenv('ALLOWED_HOSTS') else ['*']
 
+# For development convenience: when DEBUG is enabled allow common local hosts
+# and optionally allow ngrok subdomains (useful when exposing local server via ngrok).
+# Control with ALLOW_NGROK environment variable (default '1' enabled).
+if DEBUG:
+    # If ALLOWED_HOSTS contains '*' don't change anything
+    if ALLOWED_HOSTS != ['*'] and '*' not in ALLOWED_HOSTS:
+        # ensure common local hosts are present
+        for _h in ("127.0.0.1", "localhost", "[::1]"):
+            if _h not in ALLOWED_HOSTS:
+                ALLOWED_HOSTS.append(_h)
+        # Optionally allow ngrok subdomains (e.g. e4921ef9954a.ngrok-free.app)
+        allow_ngrok = os.getenv('ALLOW_NGROK', '1') == '1'
+        if allow_ngrok and '.ngrok-free.app' not in ALLOWED_HOSTS:
+            # Leading dot allows subdomains and the naked domain
+            ALLOWED_HOSTS.append('.ngrok-free.app')
+
 
 # Application definition
 
@@ -179,3 +195,52 @@ APP_BRAND_NAME = os.getenv('APP_BRAND_NAME', 'PumaSP')
 APP_BRAND_TAGLINE = os.getenv('APP_BRAND_TAGLINE', '')
 # Default to favicon.svg to avoid missing file; place your own under static/branding/logo.svg and set APP_BRAND_LOGO
 APP_BRAND_LOGO = os.getenv('APP_BRAND_LOGO', 'favicon.svg')
+
+# CSRF trusted origins
+# You can set CSRF_TRUSTED_ORIGINS env var as a comma-separated list of full origins
+# (including scheme), or set NGROK_HOSTS (comma-separated hostnames) when exposing
+# the local server through ngrok. In development (DEBUG=True) we add http://localhost
+# and http://127.0.0.1 by default. For ngrok, set NGROK_HOSTS=e4921ef9954a.ngrok-free.app
+CSRF_TRUSTED_ORIGINS = []
+if os.getenv('CSRF_TRUSTED_ORIGINS'):
+    for origin in os.getenv('CSRF_TRUSTED_ORIGINS').split(','):
+        origin = origin.strip()
+        if origin:
+            CSRF_TRUSTED_ORIGINS.append(origin)
+
+if DEBUG:
+    # local dev HTTP origins
+    for dev_origin in ('http://127.0.0.1', 'http://localhost'):
+        if dev_origin not in CSRF_TRUSTED_ORIGINS:
+            CSRF_TRUSTED_ORIGINS.append(dev_origin)
+
+    # Allow specifying ngrok hostnames in NGROK_HOSTS env (comma separated).
+    # Each entry should be the hostname only (no scheme), e.g. e4921ef9954a.ngrok-free.app
+    allow_ngrok = os.getenv('ALLOW_NGROK', '1') == '1'
+    ngrok_hosts = os.getenv('NGROK_HOSTS')
+    if allow_ngrok and ngrok_hosts:
+        for host in ngrok_hosts.split(','):
+            host = host.strip()
+            if not host:
+                continue
+            origin = host
+            # ensure scheme present: ngrok uses https by default
+            if not origin.startswith('http://') and not origin.startswith('https://'):
+                origin = 'https://' + origin
+            if origin not in CSRF_TRUSTED_ORIGINS:
+                CSRF_TRUSTED_ORIGINS.append(origin)
+
+# If CSRF_TRUSTED_ORIGINS is still empty, we attempt to populate from ALLOWED_HOSTS
+# by converting simple hostnames to https://host (useful if you set ALLOWED_HOSTS explicitly).
+if not CSRF_TRUSTED_ORIGINS and ALLOWED_HOSTS:
+    for h in ALLOWED_HOSTS:
+        if not h or h == '*' or h.startswith('.'):
+            continue
+        # skip IPs/localhost already covered
+        if h in ('127.0.0.1', 'localhost', '[::1]'):
+            continue
+        origin = h
+        if not origin.startswith('http://') and not origin.startswith('https://'):
+            origin = 'https://' + origin
+        if origin not in CSRF_TRUSTED_ORIGINS:
+            CSRF_TRUSTED_ORIGINS.append(origin)
